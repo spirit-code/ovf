@@ -29,9 +29,19 @@ catch ( ... )
     return nullptr;
 }
 
-int  ovf_read_segment_4(struct ovf_file *ovf_file_ptr, int index, const struct ovf_geometry *expected, struct ovf_segment *segment, float *data)
+int ovf_read_segment_header(struct ovf_file *ovf_file_ptr, int index, struct ovf_segment *segment)
 try
 {
+    OVF_File& file = ovf_file_ptr->_file_handle->file;
+
+    if (!file.exists() || !file.is_OVF() || file.binary_length != 4)
+        return OVF_ERROR;
+
+    if (index >= file.get_n_segments())
+        return OVF_ERROR;
+
+    file.read_segment_header( segment, index );
+
     return OVF_OK;
 }
 catch ( ... )
@@ -39,15 +49,35 @@ catch ( ... )
     return OVF_ERROR;
 }
 
-int  ovf_read_segment_8(struct ovf_file *ovf_file_ptr, int index, const struct ovf_geometry *expected, struct ovf_segment *segment, double *data)
+int ovf_read_segment_data_4(struct ovf_file *ovf_file_ptr, int index, const struct ovf_segment *segment, float *data)
 try
 {
+    OVF_File& file = ovf_file_ptr->_file_handle->file;
+
+    if (!file.exists() || !file.is_OVF() || file.binary_length != 4)
+        return OVF_ERROR;
+
+    if (index >= file.get_n_segments())
+        return OVF_ERROR;
+
+    file.read_segment_4(data, segment, index);
+
     return OVF_OK;
 }
 catch ( ... )
 {
     return OVF_ERROR;
 }
+
+// int  ovf_read_segment_8(struct ovf_file *ovf_file_ptr, int index, const struct ovf_geometry *expected, struct ovf_segment *segment, double *data)
+// try
+// {
+//     return OVF_OK;
+// }
+// catch ( ... )
+// {
+//     return OVF_ERROR;
+// }
 
 int  ovf_write_segment(struct ovf_file *ovf_file_ptr, long codepoint)
 try

@@ -6,26 +6,39 @@ import ctypes
 _ovf = ovflib.LoadOVFLibrary()
 
 
-### --------------------------------------------------------------
-
-### Read a segment with float precision
-_ovf_read_segment_4 = _ovf.ovf_read_segment_4
-_ovf_read_segment_4.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_float)]
-_ovf_read_segment_4.restype = ctypes.c_int
-
-### --------------------------------------------------------------
-
 
 class ovf_segment(ctypes.Structure):
     ### Some properties
     _fields_ = [
-        ("title",       ctypes.c_char_p),
-        ("meshunits",   ctypes.c_char_p),
-        ("valuedim",    ctypes.c_int),
-        ("valueunits",  ctypes.c_char_p),
-        ("valuelabels", ctypes.c_char_p),
-        ("meshtype",    ctypes.c_char_p)
+        ("title",            ctypes.c_char_p),
+        ("valuedim",         ctypes.c_int),
+        ("valueunits",       ctypes.c_char_p),
+        ("valuelabels",      ctypes.c_char_p),
+        ("meshtype",         ctypes.c_char_p),
+        ("meshunits",        ctypes.c_char_p),
+        ("n_cells",          ctypes.POINTER(ctypes.c_int)),
+        ("N",                ctypes.c_int),
+        ("bounds_min",       ctypes.POINTER(ctypes.c_float)),
+        ("bounds_max",       ctypes.POINTER(ctypes.c_float)),
+        ("lattice_constant", ctypes.c_float),
+        ("bounds_max",       ctypes.POINTER(ctypes.POINTER(ctypes.c_float)))
     ]
+
+
+### --------------------------------------------------------------
+
+### Read a segment header
+_ovf_read_segment_header = _ovf.ovf_read_segment_header
+_ovf_read_segment_header.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ovf_segment)]
+_ovf_read_segment_header.restype  = ctypes.c_int
+
+### Read a segment with float precision
+_ovf_read_segment_data_4 = _ovf.ovf_read_segment_data_4
+_ovf_read_segment_data_4.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ovf_segment), ctypes.POINTER(ctypes.c_float)]
+_ovf_read_segment_data_4.restype  = ctypes.c_int
+
+### --------------------------------------------------------------
+
 
 class _ovf_file(ctypes.Structure):
     ### Some properties
@@ -36,8 +49,12 @@ class _ovf_file(ctypes.Structure):
         ("_file_handle", ctypes.c_void_p)
     ]
 
-    def read_segment_4(self, index, expected_geometry, segment, data):
-        return int(_ovf_read_segment_4(self._p_file, ctypes.c_int(index), expected_geometry, segment, data))
+    def read_segment_header(self, index, segment):
+        return int(_ovf_read_segment_header(ctypes.addressof(self), ctypes.c_int(index), ctypes.POINTER(ovf_segment)(segment)))
+
+    def read_segment_data(self, index, segment, data):
+        datap = data.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        return int(_ovf_read_segment_data_4(ctypes.addressof(self), ctypes.c_int(index), ctypes.POINTER(ovf_segment)(segment), datap))
 
 
 ### Setup State

@@ -222,7 +222,7 @@ void OVF_File::read_header()
     }
 }
     
-void OVF_File::check_geometry( const ovf_geometry * geometry )
+void OVF_File::check_geometry( const ovf_segment * segment )
 {
     try
     {
@@ -234,9 +234,9 @@ void OVF_File::check_geometry( const ovf_geometry * geometry )
         //         "current image");
         
         // Check if the geometry of the ovf file is the same with the one of the current image
-        if ( this->nodes[0] != geometry->n_cells[0] ||
-            this->nodes[1] != geometry->n_cells[1] ||
-            this->nodes[2] != geometry->n_cells[2] )
+        if( this->nodes[0] != segment->n_cells[0] ||
+            this->nodes[1] != segment->n_cells[1] ||
+            this->nodes[2] != segment->n_cells[2] )
         {
             // Log(Log_Level::Warning, this->sender, fmt::format("The geometry of the OVF file "
             //     "does not much the geometry of the current image") );
@@ -247,55 +247,7 @@ void OVF_File::check_geometry( const ovf_geometry * geometry )
         // spirit_rethrow( fmt::format("Failed to read OVF file \"{}\".", this->filename) );
     }
 }
-    
-void OVF_File::read_data( double * vf, ovf_geometry * geometry )
-{
-    try
-    {
-        // Raw data representation
-        ifile->Read_String( this->datatype_in, "# Begin: Data" );
-        std::istringstream repr( this->datatype_in );
-        repr >> this->datatype_in;
-        if( this->datatype_in == "binary" ) 
-            repr >> this->binary_length;
-        else
-            this->binary_length = 0;
 
-        // auto lvl = Log_Level::Debug;
-
-        // Log( lvl, this->sender, fmt::format( "# OVF data representation = {}", this->datatype_in ) );
-        // Log( lvl, this->sender, fmt::format( "# OVF binary length       = {}", this->binary_length ) );
-
-        // Check that representation and binary length valures are ok
-        if( this->datatype_in != "text" && 
-            this->datatype_in != "binary" &&
-            this->datatype_in != "csv" )
-        {
-            // spirit_throw( Utility::Exception_Classifier::Bad_File_Content, 
-            //                 Utility::Log_Level::Error, "Data representation must be "
-            //                 "either \"text\", \"binary\" or \"csv\"");
-        }
-        
-        if( this->datatype_in == "binary" && 
-                this->binary_length != 4 && this->binary_length != 8  )
-        {
-            // spirit_throw( Exception_Classifier::Bad_File_Content, Log_Level::Error,
-            //                 "Binary representation can be either \"binary 8\" or \"binary 4\"");
-        }
-        
-        // Read the data
-        if( this->datatype_in == "binary" )
-            read_data_bin( vf, geometry );
-        else if( this->datatype_in == "text" )
-            read_data_txt( vf, geometry );
-        else if( this->datatype_in == "csv" )
-            read_data_txt( vf, geometry, "," );
-    }
-    catch (...) 
-    {
-        // spirit_rethrow( fmt::format("Failed to read OVF file \"{}\".", filename) );
-    }
-}
 
 
 bool OVF_File::check_binary_values()
@@ -338,134 +290,6 @@ bool OVF_File::check_binary_values()
     }
 
 
-}
-
-void OVF_File::read_data_bin( double * vf, ovf_geometry * geometry )
-{
-    try
-    {        
-        // Set the input stream indicator to the end of the line describing the data block
-        ifile->iss.seekg( std::ios::end );
-        
-        // Check if the initial check value of the binary data is valid
-        // if( !check_binary_values() )
-        //     spirit_throw( Exception_Classifier::Bad_File_Content, Log_Level::Error,
-        //                     "The OVF initial binary value could not be read correctly");
-        
-        // Comparison of datum size compared to scalar type
-        if ( this->binary_length == 4 )
-        {
-            int vectorsize = 3 * sizeof(float);
-            float buffer[3];
-            int index;
-            for( int k=0; k<this->nodes[2]; k++ )
-            {
-                for( int j=0; j<this->nodes[1]; j++ )
-                {
-                    for( int i=0; i<this->nodes[0]; i++ )
-                    {
-                        index = i + j*this->nodes[0] + k*this->nodes[0]*this->nodes[1];
-                        
-                        ifile->myfile->read(reinterpret_cast<char *>(&buffer[0]), vectorsize);
-                        
-                        vf[index + 0] = static_cast<double>(buffer[0]);
-                        vf[index + 1] = static_cast<double>(buffer[1]);
-                        vf[index + 2] = static_cast<double>(buffer[2]);
-                        
-                        if (norm(&(vf[index])) < 1e-5)
-                        {
-                            vf[index + 0] = 0;
-                            vf[index + 1] = 0;
-                            vf[index + 2] = 1;
-                            // in case of spin vector close to zero we have a vacancy
-                        #ifdef SPIRIT_ENABLE_DEFECTS
-                            geometry->atom_types[index] = -1;
-                        #endif
-                        }
-                    }
-                }
-            }
-            
-            // normalize read in spins 
-            // normalize_vectors( vf, nos );
-        }
-        else if (this->binary_length == 8)
-        {
-            int vectorsize = 3 * sizeof(double);
-            double buffer[3];
-            int index;
-            for (int k = 0; k<this->nodes[2]; k++)
-            {
-                for (int j = 0; j<this->nodes[1]; j++)
-                {
-                    for (int i = 0; i<this->nodes[0]; i++)
-                    {
-                        index = i + j*this->nodes[0] + k*this->nodes[0] * this->nodes[1];
-                        
-                        ifile->myfile->read(reinterpret_cast<char *>(&buffer[0]), vectorsize);
-                        
-                        vf[index + 0] = static_cast<double>(buffer[0]);
-                        vf[index + 1] = static_cast<double>(buffer[1]);
-                        vf[index + 2] = static_cast<double>(buffer[2]);
-                        
-                        if (norm(&vf[index]) < 1e-5)
-                        {
-                            vf[index + 0] = 0;
-                            vf[index + 1] = 0;
-                            vf[index + 2] = 1;
-                            // in case of spin vector close to zero we have a vacancy
-                        #ifdef SPIRIT_ENABLE_DEFECTS
-                            geometry->atom_types[index] = -1;
-                        #endif
-                        }
-                    }
-                }
-            }
-            
-            // normalize read in spins 
-            // normalize_vectors( vf, nos );
-        }
-    }
-    catch (...)
-    {
-        // spirit_rethrow( "Failed to read OVF binary data" );
-    }
-}
-
-void OVF_File::read_data_txt( double * vf, ovf_geometry * geometry, 
-                                const std::string& delimiter )
-{
-    try
-    { 
-        int nos = this->nodes[0] * this->nodes[1] * this->nodes[2];
-        
-        for (int i=0; i<nos; i++)
-        {
-            this->ifile->GetLine( delimiter );
-            
-            this->ifile->iss >> vf[i + 0];
-            this->ifile->iss >> vf[i + 1];
-            this->ifile->iss >> vf[i + 2];
-            
-            if (norm(&vf[i]) < 1e-5)
-            {
-                vf[i + 0] = 0;
-                vf[i + 1] = 0;
-                vf[i + 2] = 1;
-                // in case of spin vector close to zero we have a vacancy
-            #ifdef SPIRIT_ENABLE_DEFECTS
-                geometry->atom_types[i] = -1;
-            #endif
-            }
-        }
-        
-        // normalize read in spins 
-        // normalize_vectors( vf, nos );
-    }
-    catch (...)
-    {
-        // spirit_rethrow( "Failed to check OVF initial binary value" );
-    }
 }
 
 void OVF_File::write_top_header()
@@ -680,7 +504,91 @@ int OVF_File::get_n_segments()
     return this->n_segments;
 }
 
-void OVF_File::read_segment( double * vf, ovf_geometry * geometry, 
+
+void OVF_File::read_segment_header( ovf_segment * segment, int idx_seg )
+try
+{
+    if ( !this->file_exists )
+    {
+        // spirit_throw( Exception_Classifier::File_not_Found, Log_Level::Warning, 
+        //                 fmt::format( "The file \"{}\" does not exist", filename ) );
+    } 
+    else if ( this->n_segments == 0 )
+    {
+        // spirit_throw( Exception_Classifier::Bad_File_Content, Log_Level::Warning, 
+        //                 fmt::format( "File \"{}\" is empty", filename ) );
+    }
+    else
+    {
+        // open the file
+        this->ifile = std::unique_ptr<Filter_File_Handle>( 
+                            new Filter_File_Handle( this->filename, comment_tag ) ); 
+        
+        // NOTE: seg_idx.max = segment_fpos.size - 2
+        // if ( idx_seg >= ( this->segment_fpos.size() - 1 ) )
+        //     spirit_throw( Exception_Classifier::Input_parse_failed, Log_Level::Error,
+        //                     "OVF error while choosing segment - index out of bounds" );
+
+        this->ifile->SetLimits( this->segment_fpos[idx_seg], 
+                                this->segment_fpos[idx_seg+1] );
+    
+        read_header();
+
+        segment->n_cells[0] = this->nodes[0];
+        segment->n_cells[1] = this->nodes[1];
+        segment->n_cells[2] = this->nodes[2];
+
+        // close the file
+        this->ifile = NULL;
+    }
+}
+catch( ... )
+{
+
+}
+
+void OVF_File::read_segment_4( float * vf, const ovf_segment * segment, 
+                                const int idx_seg )
+try
+{
+    if ( !this->file_exists )
+    {
+        // spirit_throw( Exception_Classifier::File_not_Found, Log_Level::Warning, 
+        //                 fmt::format( "The file \"{}\" does not exist", filename ) );
+    } 
+    else if ( this->n_segments == 0 )
+    {
+        // spirit_throw( Exception_Classifier::Bad_File_Content, Log_Level::Warning, 
+        //                 fmt::format( "File \"{}\" is empty", filename ) );
+    }
+    else
+    {
+        // open the file
+        this->ifile = std::unique_ptr<Filter_File_Handle>( 
+                            new Filter_File_Handle( this->filename, comment_tag ) ); 
+        
+        // NOTE: seg_idx.max = segment_fpos.size - 2
+        // if ( idx_seg >= ( this->segment_fpos.size() - 1 ) )
+        //     spirit_throw( Exception_Classifier::Input_parse_failed, Log_Level::Error,
+        //                     "OVF error while choosing segment - index out of bounds" );
+
+        this->ifile->SetLimits( this->segment_fpos[idx_seg], 
+                                this->segment_fpos[idx_seg+1] );
+    
+        read_header();
+        check_geometry( segment );
+        read_data( vf );
+
+        // close the file
+        this->ifile = NULL;
+    }
+}
+catch( ... )
+{
+
+}
+
+void OVF_File::read_segment_8( double * vf, const ovf_segment * segment, 
                                 const int idx_seg )
 {
     try
@@ -710,8 +618,8 @@ void OVF_File::read_segment( double * vf, ovf_geometry * geometry,
                                     this->segment_fpos[idx_seg+1] );
         
             read_header();
-            check_geometry( geometry );
-            read_data( vf, geometry );
+            check_geometry( segment );
+            read_data( vf );
 
             // close the file
             this->ifile = NULL;
@@ -723,7 +631,7 @@ void OVF_File::read_segment( double * vf, ovf_geometry * geometry,
     }
 }
 
-void OVF_File::write_segment( const double * vf, const ovf_geometry * geometry,
+void OVF_File::write_segment( const double * vf, const ovf_segment * segment,
                                 const std::string comment, const bool append )
 {
     try
@@ -763,12 +671,12 @@ void OVF_File::write_segment( const double * vf, const ovf_geometry * geometry,
         this->output_to_file += fmt::format( "# meshunit: unspecified\n" );
         this->output_to_file += fmt::format( empty_line );
 
-        this->output_to_file += fmt::format( "# xmin: {}\n", geometry->bounds_min[0] );
-        this->output_to_file += fmt::format( "# ymin: {}\n", geometry->bounds_min[1] );
-        this->output_to_file += fmt::format( "# zmin: {}\n", geometry->bounds_min[2] );
-        this->output_to_file += fmt::format( "# xmax: {}\n", geometry->bounds_max[0] );
-        this->output_to_file += fmt::format( "# ymax: {}\n", geometry->bounds_max[1] );
-        this->output_to_file += fmt::format( "# zmax: {}\n", geometry->bounds_max[2] );
+        this->output_to_file += fmt::format( "# xmin: {}\n", segment->bounds_min[0] );
+        this->output_to_file += fmt::format( "# ymin: {}\n", segment->bounds_min[1] );
+        this->output_to_file += fmt::format( "# zmin: {}\n", segment->bounds_min[2] );
+        this->output_to_file += fmt::format( "# xmax: {}\n", segment->bounds_max[0] );
+        this->output_to_file += fmt::format( "# ymax: {}\n", segment->bounds_max[1] );
+        this->output_to_file += fmt::format( "# zmax: {}\n", segment->bounds_max[2] );
         this->output_to_file += fmt::format( empty_line );
 
         // TODO: Spirit does not support irregular geometry yet. Write ONLY rectangular mesh
@@ -776,28 +684,28 @@ void OVF_File::write_segment( const double * vf, const ovf_geometry * geometry,
 
         // Bravais Lattice
         this->output_to_file += fmt::format( "# xbase: {} {} {}\n", 
-                                                geometry->bravais_vectors[0][0], 
-                                                geometry->bravais_vectors[0][1],
-                                                geometry->bravais_vectors[0][2] );
+                                                segment->bravais_vectors[0][0], 
+                                                segment->bravais_vectors[0][1],
+                                                segment->bravais_vectors[0][2] );
         this->output_to_file += fmt::format( "# ybase: {} {} {}\n",
-                                                geometry->bravais_vectors[1][0], 
-                                                geometry->bravais_vectors[1][1],
-                                                geometry->bravais_vectors[1][2] );
+                                                segment->bravais_vectors[1][0], 
+                                                segment->bravais_vectors[1][1],
+                                                segment->bravais_vectors[1][2] );
         this->output_to_file += fmt::format( "# zbase: {} {} {}\n",
-                                                geometry->bravais_vectors[2][0], 
-                                                geometry->bravais_vectors[2][1],
-                                                geometry->bravais_vectors[2][2] );
+                                                segment->bravais_vectors[2][0], 
+                                                segment->bravais_vectors[2][1],
+                                                segment->bravais_vectors[2][2] );
 
         this->output_to_file += fmt::format( "# xstepsize: {}\n", 
-                                    geometry->lattice_constant * geometry->bravais_vectors[0][0] );
+                                    segment->lattice_constant * segment->bravais_vectors[0][0] );
         this->output_to_file += fmt::format( "# ystepsize: {}\n", 
-                                    geometry->lattice_constant * geometry->bravais_vectors[1][1] );
+                                    segment->lattice_constant * segment->bravais_vectors[1][1] );
         this->output_to_file += fmt::format( "# zstepsize: {}\n", 
-                                    geometry->lattice_constant * geometry->bravais_vectors[2][2] );
+                                    segment->lattice_constant * segment->bravais_vectors[2][2] );
 
-        this->output_to_file += fmt::format( "# xnodes: {}\n", geometry->n_cells[0] );
-        this->output_to_file += fmt::format( "# ynodes: {}\n", geometry->n_cells[1] );
-        this->output_to_file += fmt::format( "# znodes: {}\n", geometry->n_cells[2] );
+        this->output_to_file += fmt::format( "# xnodes: {}\n", segment->n_cells[0] );
+        this->output_to_file += fmt::format( "# ynodes: {}\n", segment->n_cells[1] );
+        this->output_to_file += fmt::format( "# znodes: {}\n", segment->n_cells[2] );
         this->output_to_file += fmt::format( empty_line );
 
         this->output_to_file += fmt::format( "# End: Header\n" );

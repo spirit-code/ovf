@@ -49,9 +49,6 @@ struct OVF_File
     std::string output_to_file;
     std::string datatype_out;
 
-    // Vector-field geometry
-    ovf_geometry geometry;
-
     // Input attributes 
     std::string version;
     std::string title;
@@ -87,28 +84,33 @@ struct OVF_File
     bool is_OVF();
     // Get the number of segments in the file
     int get_n_segments();
+    // Read segment's header into member variables
+    void read_segment_header( ovf_segment * segment, int idx_seg );
     // Read header and data from a given segment. Also check geometry
-    void read_segment( double * vf, ovf_geometry * geometry, const int idx_seg = 0 );
+    void read_segment_4( float * vf,  const ovf_segment * segment, const int idx_seg = 0 );
+    void read_segment_8( double * vf, const ovf_segment * segment, const int idx_seg = 0 );
     // Write segment to file (if the file exists overwrite it)
-    void write_segment( const double * vf, const ovf_geometry * geometry,
+    void write_segment( const double * vf, const ovf_segment * segment,
                         const std::string comment = "", const bool append = false );
 
 private:
     // Check OVF version
     void check_version();
-    // Read segment's header
+    // Read segment's header into member variables
     void read_header();
     // Check segment's geometry
-    void check_geometry( const ovf_geometry * geometry );
+    void check_geometry( const ovf_segment * segment );
     // Read segment's data
-    void read_data( double * vf, ovf_geometry * geometry );
+    template <typename T>
+    void read_data( T * vf );
     // In case of binary data check the binary check values
     bool check_binary_values();
     // Read binary OVF data
-    void read_data_bin( double * vf, ovf_geometry * geometry );
+    template <typename T>
+    void read_data_bin( T * vf );
     // Read text OVF data. The delimiter, if any, will be discarded in the reading
-    void read_data_txt( double * vf, ovf_geometry * geometry, 
-                        const std::string& delimiter = "" );
+    template <typename T>
+    void read_data_txt( T * vf, const std::string& delimiter = "" );
     // Write OVF file header
     void write_top_header();
     // Write segment data binary
@@ -123,8 +125,8 @@ private:
     int count_and_locate_segments();
 
     // Read a variable from the comment section from the header of segment idx_seg
-    template <typename T> void Read_Variable_from_Comment( T& var, const std::string name,
-                                                            const int idx_seg = 0 )
+    template <typename T>
+    void Read_Variable_from_Comment( T& var, const std::string name, const int idx_seg = 0 )
     {
         try
         {
@@ -150,8 +152,9 @@ private:
     }
 
     // Read a Vector3 from the comment section from the header of segment idx_seg
-    template <typename T> void Read_String_from_Comment( T& var, std::string name,
-                                                            const int idx_seg = 0 )
+    template <typename T>
+    void Read_String_from_Comment( T& var, std::string name,
+                                    const int idx_seg = 0 )
     {
         try
         {
@@ -176,5 +179,153 @@ private:
         }
     }
 };
+
+template <typename T>
+void OVF_File::read_data( T * vf )
+{
+    try
+    {
+        // Raw data representation
+        ifile->Read_String( this->datatype_in, "# Begin: Data" );
+        std::istringstream repr( this->datatype_in );
+        repr >> this->datatype_in;
+        if( this->datatype_in == "binary" ) 
+            repr >> this->binary_length;
+        else
+            this->binary_length = 0;
+
+        // auto lvl = Log_Level::Debug;
+
+        // Log( lvl, this->sender, fmt::format( "# OVF data representation = {}", this->datatype_in ) );
+        // Log( lvl, this->sender, fmt::format( "# OVF binary length       = {}", this->binary_length ) );
+
+        // Check that representation and binary length valures are ok
+        if( this->datatype_in != "text" && 
+            this->datatype_in != "binary" &&
+            this->datatype_in != "csv" )
+        {
+            // spirit_throw( Utility::Exception_Classifier::Bad_File_Content, 
+            //                 Utility::Log_Level::Error, "Data representation must be "
+            //                 "either \"text\", \"binary\" or \"csv\"");
+        }
+        
+        if( this->datatype_in == "binary" && 
+                this->binary_length != 4 && this->binary_length != 8  )
+        {
+            // spirit_throw( Exception_Classifier::Bad_File_Content, Log_Level::Error,
+            //                 "Binary representation can be either \"binary 8\" or \"binary 4\"");
+        }
+        
+        // Read the data
+        if( this->datatype_in == "binary" )
+            read_data_bin( vf );
+        else if( this->datatype_in == "text" )
+            read_data_txt( vf );
+        else if( this->datatype_in == "csv" )
+            read_data_txt( vf, "," );
+    }
+    catch (...) 
+    {
+        // spirit_rethrow( fmt::format("Failed to read OVF file \"{}\".", filename) );
+    }
+}
+
+
+template <typename T>
+void OVF_File::read_data_bin( T * vf )
+{
+    try
+    {        
+        // Set the input stream indicator to the end of the line describing the data block
+        ifile->iss.seekg( std::ios::end );
+        
+        // Check if the initial check value of the binary data is valid
+        // if( !check_binary_values() )
+        //     spirit_throw( Exception_Classifier::Bad_File_Content, Log_Level::Error,
+        //                     "The OVF initial binary value could not be read correctly");
+        
+        // Comparison of datum size compared to scalar type
+        if ( this->binary_length == 4 )
+        {
+            int vectorsize = 3 * sizeof(float);
+            float buffer[3];
+            int index;
+            for( int k=0; k<this->nodes[2]; k++ )
+            {
+                for( int j=0; j<this->nodes[1]; j++ )
+                {
+                    for( int i=0; i<this->nodes[0]; i++ )
+                    {
+                        index = i + j*this->nodes[0] + k*this->nodes[0]*this->nodes[1];
+                        
+                        ifile->myfile->read(reinterpret_cast<char *>(&buffer[0]), vectorsize);
+                        
+                        vf[index + 0] = static_cast<T>(buffer[0]);
+                        vf[index + 1] = static_cast<T>(buffer[1]);
+                        vf[index + 2] = static_cast<T>(buffer[2]);
+                    }
+                }
+            }
+            
+            // normalize read in spins 
+            // normalize_vectors( vf, nos );
+        }
+        else if (this->binary_length == 8)
+        {
+            int vectorsize = 3 * sizeof(double);
+            double buffer[3];
+            int index;
+            for (int k = 0; k<this->nodes[2]; k++)
+            {
+                for (int j = 0; j<this->nodes[1]; j++)
+                {
+                    for (int i = 0; i<this->nodes[0]; i++)
+                    {
+                        index = i + j*this->nodes[0] + k*this->nodes[0] * this->nodes[1];
+                        
+                        ifile->myfile->read(reinterpret_cast<char *>(&buffer[0]), vectorsize);
+                        
+                        vf[index + 0] = static_cast<T>(buffer[0]);
+                        vf[index + 1] = static_cast<T>(buffer[1]);
+                        vf[index + 2] = static_cast<T>(buffer[2]);
+                    }
+                }
+            }
+            
+            // normalize read in spins 
+            // normalize_vectors( vf, nos );
+        }
+    }
+    catch (...)
+    {
+        // spirit_rethrow( "Failed to read OVF binary data" );
+    }
+}
+
+template <typename T>
+void OVF_File::read_data_txt( T * vf, const std::string& delimiter )
+{
+    try
+    { 
+        int nos = this->nodes[0] * this->nodes[1] * this->nodes[2];
+        
+        for (int i=0; i<nos; i++)
+        {
+            this->ifile->GetLine( delimiter );
+            
+            this->ifile->iss >> vf[i + 0];
+            this->ifile->iss >> vf[i + 1];
+            this->ifile->iss >> vf[i + 2];
+        }
+        
+        // normalize read in spins 
+        // normalize_vectors( vf, nos );
+    }
+    catch (...)
+    {
+        // spirit_rethrow( "Failed to check OVF initial binary value" );
+    }
+}
+
 
 #endif
