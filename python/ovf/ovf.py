@@ -38,9 +38,14 @@ _ovf_read_segment_data_4.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINT
 _ovf_read_segment_data_4.restype  = ctypes.c_int
 
 ### Read a segment with double precision
-# _ovf_read_segment_data_8 = _ovf.ovf_read_segment_data_8
-# _ovf_read_segment_data_8.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ovf_segment), ctypes.POINTER(ctypes.c_double)]
-# _ovf_read_segment_data_8.restype  = ctypes.c_int
+_ovf_read_segment_data_8 = _ovf.ovf_read_segment_data_8
+_ovf_read_segment_data_8.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ovf_segment), ctypes.POINTER(ctypes.c_double)]
+_ovf_read_segment_data_8.restype  = ctypes.c_int
+
+### Fetch the latest message
+_ovf_latest_message = _ovf.ovf_latest_message
+_ovf_latest_message.argtypes = [ctypes.c_void_p]
+_ovf_latest_message.restype  = ctypes.c_char_p
 
 ### --------------------------------------------------------------
 
@@ -62,11 +67,13 @@ class _ovf_file(ctypes.Structure):
             datap = data.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
             return int(_ovf_read_segment_data_4(ctypes.addressof(self), ctypes.c_int(index), ctypes.pointer(segment), datap))
         elif data.dtype == np.dtype('d'):
-            # datap = data.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
-            # return int(_ovf_read_segment_data_8(ctypes.addressof(self), ctypes.c_int(index), ctypes.pointer(segment), datap))
-            print("ovf.py read_segment_data: data type double not yet supported.")
+            datap = data.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
+            return int(_ovf_read_segment_data_8(ctypes.addressof(self), ctypes.c_int(index), ctypes.pointer(segment), datap))
         else:
             print("ovf.py read_segment_data: not able to use data type ", data.dtype)
+
+    def get_latest_message(self):
+        return str(_ovf_latest_message(ctypes.addressof(self)))
 
 
 ### Setup State

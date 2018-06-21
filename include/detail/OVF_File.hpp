@@ -87,8 +87,8 @@ struct OVF_File
     // Read segment's header into member variables
     void read_segment_header( ovf_segment * segment, int idx_seg );
     // Read header and data from a given segment. Also check geometry
-    void read_segment_4( float * vf,  const ovf_segment * segment, const int idx_seg = 0 );
-    void read_segment_8( double * vf, const ovf_segment * segment, const int idx_seg = 0 );
+    template <typename T>
+    void read_segment( T * vf,  const ovf_segment * segment, const int idx_seg = 0 );
     // Write segment to file (if the file exists overwrite it)
     void write_segment( const double * vf, const ovf_segment * segment,
                         const std::string comment = "", const bool append = false );
@@ -179,6 +179,51 @@ private:
         }
     }
 };
+
+
+
+template <typename T>
+void OVF_File::read_segment( T * vf, const ovf_segment * segment, 
+                                const int idx_seg )
+try
+{
+    if ( !this->file_exists )
+    {
+        // spirit_throw( Exception_Classifier::File_not_Found, Log_Level::Warning, 
+        //                 fmt::format( "The file \"{}\" does not exist", filename ) );
+    } 
+    else if ( this->n_segments == 0 )
+    {
+        // spirit_throw( Exception_Classifier::Bad_File_Content, Log_Level::Warning, 
+        //                 fmt::format( "File \"{}\" is empty", filename ) );
+    }
+    else
+    {
+        // open the file
+        this->ifile = std::unique_ptr<Filter_File_Handle>( 
+                            new Filter_File_Handle( this->filename, comment_tag ) ); 
+        
+        // NOTE: seg_idx.max = segment_fpos.size - 2
+        // if ( idx_seg >= ( this->segment_fpos.size() - 1 ) )
+        //     spirit_throw( Exception_Classifier::Input_parse_failed, Log_Level::Error,
+        //                     "OVF error while choosing segment - index out of bounds" );
+
+        this->ifile->SetLimits( this->segment_fpos[idx_seg], 
+                                this->segment_fpos[idx_seg+1] );
+    
+        read_header();
+        check_geometry( segment );
+        read_data( vf );
+
+        // close the file
+        this->ifile = NULL;
+    }
+}
+catch( ... )
+{
+
+}
+
 
 template <typename T>
 void OVF_File::read_data( T * vf )

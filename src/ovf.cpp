@@ -1,9 +1,15 @@
 #include "ovf.h"
 #include <detail/OVF_File.hpp>
+#include <fmt/format.h>
 
 
 struct ovf_file_handle
 {
+    /* messages, e.g. in case a function returned OVF_ERROR.
+        message_out will be filled and returned by ovf_latest_message, while message_latest
+        will be filled by other functions and cleared by ovf_latest_message. */
+    std::string message_out, message_latest;
+    /* the actual OVF file */
     OVF_File file;
 };
 
@@ -15,7 +21,7 @@ try
     int format = 0;
 
     struct ovf_file * ovf_file_ptr = new ovf_file{ false, false, 0, nullptr };
-    ovf_file_ptr->_file_handle = new ovf_file_handle{ OVF_File(filename, format) };
+    ovf_file_ptr->_file_handle = new ovf_file_handle{ "", "", OVF_File(filename, format) };
 
     OVF_File& file = ovf_file_ptr->_file_handle->file;
     ovf_file_ptr->found      = file.exists();
@@ -34,11 +40,24 @@ try
 {
     OVF_File& file = ovf_file_ptr->_file_handle->file;
 
-    if (!file.exists() || !file.is_OVF() || file.binary_length != 4)
+    if (!file.exists())
+    {
+        ovf_file_ptr->_file_handle->message_latest = "libovf ovf_read_segment_header: file does not exist...";
         return OVF_ERROR;
+    }
+
+    if (!file.is_OVF())
+    {
+        ovf_file_ptr->_file_handle->message_latest = "libovf ovf_read_segment_header: file is not ovf...";
+        return OVF_ERROR;
+    }
 
     if (index >= file.get_n_segments())
+    {
+        ovf_file_ptr->_file_handle->message_latest =
+            fmt::format("libovf ovf_read_segment_header: index ({}) >= n_segments ({})...", index, file.get_n_segments());
         return OVF_ERROR;
+    }
 
     file.read_segment_header( segment, index );
 
@@ -54,13 +73,33 @@ try
 {
     OVF_File& file = ovf_file_ptr->_file_handle->file;
 
-    if (!file.exists() || !file.is_OVF() || file.binary_length != 4)
+    if (!file.exists())
+    {
+        ovf_file_ptr->_file_handle->message_latest = "libovf ovf_read_segment_data_4: file does not exist...";
         return OVF_ERROR;
+    }
+
+    if (!file.is_OVF())
+    {
+        ovf_file_ptr->_file_handle->message_latest = "libovf ovf_read_segment_data_4: file is not ovf...";
+        return OVF_ERROR;
+    }
 
     if (index >= file.get_n_segments())
+    {
+        ovf_file_ptr->_file_handle->message_latest =
+            fmt::format("libovf ovf_read_segment_data_4: index ({}) >= n_segments ({})...", index, file.get_n_segments());
         return OVF_ERROR;
+    }
 
-    file.read_segment_4(data, segment, index);
+    // TODO: parse binary length correctly
+    // if (file.binary_length != 4)
+    // {
+    //     ovf_file_ptr->_file_handle->message_latest = "libovf ovf_read_segment_data_4: file does not have binary length 4...";
+    //     return OVF_ERROR;
+    // }
+
+    file.read_segment(data, segment, index);
 
     return OVF_OK;
 }
@@ -69,15 +108,45 @@ catch ( ... )
     return OVF_ERROR;
 }
 
-// int  ovf_read_segment_8(struct ovf_file *ovf_file_ptr, int index, const struct ovf_geometry *expected, struct ovf_segment *segment, double *data)
-// try
-// {
-//     return OVF_OK;
-// }
-// catch ( ... )
-// {
-//     return OVF_ERROR;
-// }
+int ovf_read_segment_data_8(struct ovf_file *ovf_file_ptr, int index, const struct ovf_segment *segment, double *data)
+try
+{
+    OVF_File& file = ovf_file_ptr->_file_handle->file;
+
+    if (!file.exists())
+    {
+        ovf_file_ptr->_file_handle->message_latest = "libovf ovf_read_segment_8: file does not exist...";
+        return OVF_ERROR;
+    }
+
+    if (!file.is_OVF())
+    {
+        ovf_file_ptr->_file_handle->message_latest = "libovf ovf_read_segment_8: file is not ovf...";
+        return OVF_ERROR;
+    }
+
+    if (index >= file.get_n_segments())
+    {
+        ovf_file_ptr->_file_handle->message_latest =
+            fmt::format("libovf ovf_read_segment_8: index ({}) >= n_segments ({})...", index, file.get_n_segments());
+        return OVF_ERROR;
+    }
+
+    // TODO: parse binary length correctly
+    // if (file.binary_length != 8)
+    // {
+    //     ovf_file_ptr->_file_handle->message_latest = "libovf ovf_read_segment_8: file does not have binary length 4...";
+    //     return OVF_ERROR;
+    // }
+
+    file.read_segment(data, segment, index);
+
+    return OVF_OK;
+}
+catch ( ... )
+{
+    return OVF_ERROR;
+}
 
 int  ovf_write_segment(struct ovf_file *ovf_file_ptr, long codepoint)
 try
@@ -97,6 +166,18 @@ try
 catch ( ... )
 {
     return OVF_ERROR;
+}
+
+const char * ovf_latest_message(struct ovf_file *ovf_file_ptr)
+try
+{
+    ovf_file_ptr->_file_handle->message_out = ovf_file_ptr->_file_handle->message_latest;
+    ovf_file_ptr->_file_handle->message_latest = "";
+    return ovf_file_ptr->_file_handle->message_out.c_str();
+}
+catch( ... )
+{
+    return "";
 }
 
 int ovf_close(struct ovf_file *ovf_file_ptr)

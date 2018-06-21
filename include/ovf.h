@@ -72,12 +72,15 @@ DLLEXPORT int ovf_read_segment_header(struct ovf_file *, int index, struct ovf_s
 /* This function checks the segment in the file against the passed segment and,
     if the dimensions fit, will read the data into the passed array. */
 DLLEXPORT int ovf_read_segment_data_4(struct ovf_file *, int index, const struct ovf_segment *segment, float *data);
-// DLLEXPORT int ovf_read_segment_data_8(struct ovf_file *, int index, const struct ovf_segment *segment, double *data);
+DLLEXPORT int ovf_read_segment_data_8(struct ovf_file *, int index, const struct ovf_segment *segment, double *data);
 
 /* write a segment to the file, overwriting all contents. The new header will have segment count = 1 */
 DLLEXPORT int ovf_write_segment(struct ovf_file *, long codepoint);
 /* append a segment to the file. The segment count will be incremented */
 DLLEXPORT int ovf_append_segment(struct ovf_file *, long codepoint);
+
+/* retrieve the most recent error message and clear it */
+DLLEXPORT const char * ovf_latest_message(struct ovf_file *);
 
 /* close the file and clean up resources */
 DLLEXPORT int ovf_close(struct ovf_file *);

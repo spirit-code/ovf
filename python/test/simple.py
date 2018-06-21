@@ -18,6 +18,9 @@ with ovf.ovf_file("nonexistent.ovf") as ovf_file:
     print("found:      ", ovf_file.found)
     print("is_ovf:     ", ovf_file.is_ovf)
     print("n_segments: ", ovf_file.n_segments)
+    segment = ovf.ovf_segment()
+    if ovf_file.read_segment_header(0, segment) != -1:
+        print("ovf file returned error: ", ovf_file.get_latest_message())
     print("----- ovf test nonexistent done")
 
 
