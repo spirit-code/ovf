@@ -1,6 +1,6 @@
 import ovf.ovflib as ovflib
 import ctypes
-
+import numpy as np
 
 ### Load Library
 _ovf = ovflib.LoadOVFLibrary()
@@ -37,6 +37,11 @@ _ovf_read_segment_data_4 = _ovf.ovf_read_segment_data_4
 _ovf_read_segment_data_4.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ovf_segment), ctypes.POINTER(ctypes.c_float)]
 _ovf_read_segment_data_4.restype  = ctypes.c_int
 
+### Read a segment with double precision
+# _ovf_read_segment_data_8 = _ovf.ovf_read_segment_data_8
+# _ovf_read_segment_data_8.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ovf_segment), ctypes.POINTER(ctypes.c_double)]
+# _ovf_read_segment_data_8.restype  = ctypes.c_int
+
 ### --------------------------------------------------------------
 
 
@@ -50,11 +55,18 @@ class _ovf_file(ctypes.Structure):
     ]
 
     def read_segment_header(self, index, segment):
-        return int(_ovf_read_segment_header(ctypes.addressof(self), ctypes.c_int(index), ctypes.POINTER(ovf_segment)(segment)))
+        return int(_ovf_read_segment_header(ctypes.addressof(self), ctypes.c_int(index), ctypes.pointer(segment)))
 
     def read_segment_data(self, index, segment, data):
-        datap = data.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-        return int(_ovf_read_segment_data_4(ctypes.addressof(self), ctypes.c_int(index), ctypes.POINTER(ovf_segment)(segment), datap))
+        if data.dtype == np.dtype('f'):
+            datap = data.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+            return int(_ovf_read_segment_data_4(ctypes.addressof(self), ctypes.c_int(index), ctypes.pointer(segment), datap))
+        elif data.dtype == np.dtype('d'):
+            # datap = data.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
+            # return int(_ovf_read_segment_data_8(ctypes.addressof(self), ctypes.c_int(index), ctypes.pointer(segment), datap))
+            print("ovf.py read_segment_data: data type double not yet supported.")
+        else:
+            print("ovf.py read_segment_data: not able to use data type ", data.dtype)
 
 
 ### Setup State

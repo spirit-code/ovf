@@ -260,9 +260,9 @@ void OVF_File::read_data_bin( T * vf )
                         
                         ifile->myfile->read(reinterpret_cast<char *>(&buffer[0]), vectorsize);
                         
-                        vf[index + 0] = static_cast<T>(buffer[0]);
-                        vf[index + 1] = static_cast<T>(buffer[1]);
-                        vf[index + 2] = static_cast<T>(buffer[2]);
+                        vf[3*index + 0] = static_cast<T>(buffer[0]);
+                        vf[3*index + 1] = static_cast<T>(buffer[1]);
+                        vf[3*index + 2] = static_cast<T>(buffer[2]);
                     }
                 }
             }
@@ -285,9 +285,9 @@ void OVF_File::read_data_bin( T * vf )
                         
                         ifile->myfile->read(reinterpret_cast<char *>(&buffer[0]), vectorsize);
                         
-                        vf[index + 0] = static_cast<T>(buffer[0]);
-                        vf[index + 1] = static_cast<T>(buffer[1]);
-                        vf[index + 2] = static_cast<T>(buffer[2]);
+                        vf[3*index + 0] = static_cast<T>(buffer[0]);
+                        vf[3*index + 1] = static_cast<T>(buffer[1]);
+                        vf[3*index + 2] = static_cast<T>(buffer[2]);
                     }
                 }
             }
@@ -308,18 +308,15 @@ void OVF_File::read_data_txt( T * vf, const std::string& delimiter )
     try
     { 
         int nos = this->nodes[0] * this->nodes[1] * this->nodes[2];
-        
+
         for (int i=0; i<nos; i++)
         {
             this->ifile->GetLine( delimiter );
-            
-            this->ifile->iss >> vf[i + 0];
-            this->ifile->iss >> vf[i + 1];
-            this->ifile->iss >> vf[i + 2];
+
+            this->ifile->iss >> vf[3*i + 0];
+            this->ifile->iss >> vf[3*i + 1];
+            this->ifile->iss >> vf[3*i + 2];
         }
-        
-        // normalize read in spins 
-        // normalize_vectors( vf, nos );
     }
     catch (...)
     {
