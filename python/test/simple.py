@@ -12,8 +12,8 @@ import numpy as np
 
 ##########
 
+print("----- ovf test nonexistent")
 with ovf.ovf_file("nonexistent.ovf") as ovf_file:
-    print("----- ovf test nonexistent")
     print(ovf_file)
     print("found:      ", ovf_file.found)
     print("is_ovf:     ", ovf_file.is_ovf)
@@ -21,11 +21,11 @@ with ovf.ovf_file("nonexistent.ovf") as ovf_file:
     segment = ovf.ovf_segment()
     if ovf_file.read_segment_header(0, segment) != -1:
         print("ovf file returned error: ", ovf_file.get_latest_message())
-    print("----- ovf test nonexistent done")
+print("----- ovf test nonexistent done")
 
 
+print("----- ovf test existent")
 with ovf.ovf_file(os.path.abspath(os.path.join(os.path.dirname( __file__ ), "testfile.ovf"))) as ovf_file:
-    print("----- ovf test existent")
     print(ovf_file)
     print("found:      ", ovf_file.found)
     print("is_ovf:     ", ovf_file.is_ovf)
@@ -38,4 +38,15 @@ with ovf.ovf_file(os.path.abspath(os.path.join(os.path.dirname( __file__ ), "tes
         print("read_segment_data failed")
     print("first: ", data[0,0,0,:])
     print("last:  ", data[-1,-1,-1,:])
-    print("----- ovf test existent done")
+print("----- ovf test existent done")
+
+
+print("----- ovf test writing")
+with ovf.ovf_file(os.path.abspath(os.path.join(os.path.dirname( __file__ ), "testfile_out.ovf"))) as ovf_file:
+    print(ovf_file)
+    data = np.zeros((2, 2, 1, 3), dtype='d')
+    data[0,1,0,:] = [3.0, 2.0, 1.0]
+    segment = ovf.ovf_segment(n_cells=[2,2,1])
+    if ovf_file.write_segment(segment, data) != -1:
+        print("read_segment_header failed")
+print("----- ovf test writing done")    

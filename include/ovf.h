@@ -23,6 +23,12 @@
 #define OVF_ERROR       -2
 #define OVF_INVALID     -3
 
+/* OVF data formats */
+#define OVF_FORMAT_BIN   -53 /* defaults to double precision */
+#define OVF_FORMAT_BIN4  -54 /* possibly unneeded? */
+#define OVF_FORMAT_BIN8  -55 /* possibly unneeded? */
+#define OVF_FORMAT_TEXT  -56
+#define OVF_FORMAT_CSV   -57
 
 /* all header info on a segment */
 struct ovf_segment {
@@ -74,10 +80,15 @@ DLLEXPORT int ovf_read_segment_header(struct ovf_file *, int index, struct ovf_s
 DLLEXPORT int ovf_read_segment_data_4(struct ovf_file *, int index, const struct ovf_segment *segment, float *data);
 DLLEXPORT int ovf_read_segment_data_8(struct ovf_file *, int index, const struct ovf_segment *segment, double *data);
 
-/* write a segment to the file, overwriting all contents. The new header will have segment count = 1 */
-DLLEXPORT int ovf_write_segment(struct ovf_file *, long codepoint);
-/* append a segment to the file. The segment count will be incremented */
-DLLEXPORT int ovf_append_segment(struct ovf_file *, long codepoint);
+/* write a segment (header and data) to the file, overwriting all contents.
+    The new header will have segment count = 1 */
+DLLEXPORT int ovf_write_segment_4(struct ovf_file *, const struct ovf_segment *segment, float *data, int format=OVF_FORMAT_BIN);
+DLLEXPORT int ovf_write_segment_8(struct ovf_file *, const struct ovf_segment *segment, double *data, int format=OVF_FORMAT_BIN);
+
+/* append a segment (header and data) to the file.
+    The segment count will be incremented */
+DLLEXPORT int ovf_append_segment_4(struct ovf_file *, const struct ovf_segment *segment, float *data, int format=OVF_FORMAT_BIN);
+DLLEXPORT int ovf_append_segment_8(struct ovf_file *, const struct ovf_segment *segment, double *data, int format=OVF_FORMAT_BIN);
 
 /* retrieve the most recent error message and clear it */
 DLLEXPORT const char * ovf_latest_message(struct ovf_file *);

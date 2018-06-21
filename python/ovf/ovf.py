@@ -16,14 +16,18 @@ class ovf_segment(ctypes.Structure):
         ("valuelabels",      ctypes.c_char_p),
         ("meshtype",         ctypes.c_char_p),
         ("meshunits",        ctypes.c_char_p),
-        ("n_cells",          ctypes.POINTER(ctypes.c_int)),
+        ("n_cells",          ctypes.c_int*3),
         ("N",                ctypes.c_int),
-        ("bounds_min",       ctypes.POINTER(ctypes.c_float)),
-        ("bounds_max",       ctypes.POINTER(ctypes.c_float)),
+        ("bounds_min",       ctypes.c_float*3),
+        ("bounds_max",       ctypes.c_float*3),
         ("lattice_constant", ctypes.c_float),
-        ("bounds_max",       ctypes.POINTER(ctypes.POINTER(ctypes.c_float)))
+        ("bounds_max",       ctypes.c_float*3*3)
     ]
 
+    def __init__(self, title="", valuedim=0, valueunits=3, valuelabels=[], meshtype="", meshunits="", n_cells=[1,1,1]):
+        for i in range(3):
+            self.n_cells[i] = n_cells[i]
+        self.N = n_cells[0]*n_cells[1]*n_cells[2]
 
 ### --------------------------------------------------------------
 
@@ -41,6 +45,16 @@ _ovf_read_segment_data_4.restype  = ctypes.c_int
 _ovf_read_segment_data_8 = _ovf.ovf_read_segment_data_8
 _ovf_read_segment_data_8.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ovf_segment), ctypes.POINTER(ctypes.c_double)]
 _ovf_read_segment_data_8.restype  = ctypes.c_int
+
+### Write a segment with float precision (overwrite file)
+_ovf_write_segment_4 = _ovf.ovf_write_segment_4
+_ovf_write_segment_4.argtypes = [ctypes.c_void_p, ctypes.POINTER(ovf_segment), ctypes.POINTER(ctypes.c_float), ctypes.c_int]
+_ovf_write_segment_4.restype  = ctypes.c_int
+
+### Write a segment with double precision (overwrite file)
+_ovf_write_segment_8 = _ovf.ovf_write_segment_8
+_ovf_write_segment_8.argtypes = [ctypes.c_void_p, ctypes.POINTER(ovf_segment), ctypes.POINTER(ctypes.c_double), ctypes.c_int]
+_ovf_write_segment_8.restype  = ctypes.c_int
 
 ### Fetch the latest message
 _ovf_latest_message = _ovf.ovf_latest_message
@@ -69,6 +83,16 @@ class _ovf_file(ctypes.Structure):
         elif data.dtype == np.dtype('d'):
             datap = data.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
             return int(_ovf_read_segment_data_8(ctypes.addressof(self), ctypes.c_int(index), ctypes.pointer(segment), datap))
+        else:
+            print("ovf.py read_segment_data: not able to use data type ", data.dtype)
+
+    def write_segment(self, segment, data, fileformat=-56):
+        if data.dtype == np.dtype('f'):
+            datap = data.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+            return int(_ovf_write_segment_4(ctypes.addressof(self), ctypes.pointer(segment), datap, fileformat))
+        elif data.dtype == np.dtype('d'):
+            datap = data.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
+            return int(_ovf_write_segment_8(ctypes.addressof(self), ctypes.pointer(segment), datap, fileformat))
         else:
             print("ovf.py read_segment_data: not able to use data type ", data.dtype)
 

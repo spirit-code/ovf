@@ -90,8 +90,9 @@ struct OVF_File
     template <typename T>
     void read_segment( T * vf,  const ovf_segment * segment, const int idx_seg = 0 );
     // Write segment to file (if the file exists overwrite it)
-    void write_segment( const double * vf, const ovf_segment * segment,
-                        const std::string comment = "", const bool append = false );
+    template <typename T>
+    void write_segment( const T * vf, const ovf_segment * segment, const std::string comment = "",
+                        const bool append = false, int format=OVF_FORMAT_BIN );
 
 private:
     // Check OVF version
@@ -114,9 +115,11 @@ private:
     // Write OVF file header
     void write_top_header();
     // Write segment data binary
-    void write_data_bin( const double * vf, int size );
+    template <typename T>
+    void write_data_bin( const T * vf, int size );
     // Write segment data text
-    void write_data_txt( const double * vf, int size, const std::string& delimiter = "" ); 
+    template <typename T>
+    void write_data_txt( const T * vf, int size, const std::string& delimiter = "" ); 
     // Increment segment count
     void increment_n_segments();
     // Read the number of segments in the file by reading the top header
@@ -176,6 +179,46 @@ private:
         {
             // spirit_handle_exception_core(fmt::format( "Failed to read string \"{}\" "
             //                                             "from comment", name ));
+        }
+    }
+
+
+    // TODO: use Filter_File_Handle instead...
+    void Strings_to_File(const std::vector<std::string> text, const std::string name, int no=-1)
+    {
+        std::ofstream myfile;
+        myfile.open(name);
+        if (myfile.is_open())
+        {
+            if (no < 0)
+                no = text.size();
+            // Log(Log_Level::Debug, Log_Sender::All, "Started writing " + name);
+            for (int i = 0; i < no; ++i) {
+                myfile << text[i];
+            }
+            myfile.close();
+            // Log(Log_Level::Debug, Log_Sender::All, "Finished writing " + name);
+        }
+        else
+        {
+            // Log(Log_Level::Error, Log_Sender::All, "Could not open " + name + " to write to file");
+        }
+    }
+
+    void Append_String_to_File(const std::string text, const std::string name)
+    {
+        std::ofstream myfile;
+        myfile.open(name, std::ofstream::out | std::ofstream::app);
+        if (myfile.is_open())
+        {
+            // Log(Log_Level::Debug, Log_Sender::All, "Started writing " + name);
+            myfile << text;
+            myfile.close();
+            // Log(Log_Level::Debug, Log_Sender::All, "Finished writing " + name);
+        }
+        else
+        {
+            // Log(Log_Level::Error, Log_Sender::All, "Could not open " + name + " to append to file");
         }
     }
 };
@@ -369,5 +412,189 @@ void OVF_File::read_data_txt( T * vf, const std::string& delimiter )
     }
 }
 
+
+template <typename T>
+void OVF_File::write_segment( const T * vf, const ovf_segment * segment,
+                                const std::string comment, const bool append, int format )
+{
+    try
+    {
+        this->output_to_file.reserve( int( 0x08000000 ) );  // reserve 128[MByte]
+
+        // If we are not appending or the file does not exists we need to write the top header
+        // and to turn the file_exists attribute to true so we can append more segments
+        if ( !append || !this->file_exists ) 
+        {
+            write_top_header();
+            read_n_segments_from_top_header();  // finds the file position of n_segments
+            this->file_exists = true; 
+        }
+
+        this->output_to_file += fmt::format( empty_line );
+        this->output_to_file += fmt::format( "# Begin: Segment\n" );
+        this->output_to_file += fmt::format( "# Begin: Header\n" );
+        this->output_to_file += fmt::format( empty_line );
+
+        this->output_to_file += fmt::format( "# Title:\n");
+        this->output_to_file += fmt::format( empty_line );
+
+        this->output_to_file += fmt::format( "# Desc: {}\n", comment );
+        this->output_to_file += fmt::format( empty_line );
+
+        // The value dimension is always 3 since we are writting Vector3-data
+        this->output_to_file += fmt::format( "# valuedim: {} ##Value dimension\n", 3 );
+        this->output_to_file += fmt::format( "# valueunits: None None None\n" );
+        this->output_to_file +=
+            fmt::format("# valuelabels: spin_x_component spin_y_component "
+                        "spin_z_component \n");
+        this->output_to_file += fmt::format( empty_line );
+
+        this->output_to_file += fmt::format( "## Fundamental mesh measurement unit. "
+                                                "Treated as a label:\n" );
+        this->output_to_file += fmt::format( "# meshunit: unspecified\n" );
+        this->output_to_file += fmt::format( empty_line );
+
+        this->output_to_file += fmt::format( "# xmin: {}\n", segment->bounds_min[0] );
+        this->output_to_file += fmt::format( "# ymin: {}\n", segment->bounds_min[1] );
+        this->output_to_file += fmt::format( "# zmin: {}\n", segment->bounds_min[2] );
+        this->output_to_file += fmt::format( "# xmax: {}\n", segment->bounds_max[0] );
+        this->output_to_file += fmt::format( "# ymax: {}\n", segment->bounds_max[1] );
+        this->output_to_file += fmt::format( "# zmax: {}\n", segment->bounds_max[2] );
+        this->output_to_file += fmt::format( empty_line );
+
+        // TODO: Spirit does not support irregular geometry yet. Write ONLY rectangular mesh
+        this->output_to_file += fmt::format( "# meshtype: rectangular\n" );
+
+        // Bravais Lattice
+        this->output_to_file += fmt::format( "# xbase: {} {} {}\n", 
+                                                segment->bravais_vectors[0][0], 
+                                                segment->bravais_vectors[0][1],
+                                                segment->bravais_vectors[0][2] );
+        this->output_to_file += fmt::format( "# ybase: {} {} {}\n",
+                                                segment->bravais_vectors[1][0], 
+                                                segment->bravais_vectors[1][1],
+                                                segment->bravais_vectors[1][2] );
+        this->output_to_file += fmt::format( "# zbase: {} {} {}\n",
+                                                segment->bravais_vectors[2][0], 
+                                                segment->bravais_vectors[2][1],
+                                                segment->bravais_vectors[2][2] );
+
+        this->output_to_file += fmt::format( "# xstepsize: {}\n", 
+                                    segment->lattice_constant * segment->bravais_vectors[0][0] );
+        this->output_to_file += fmt::format( "# ystepsize: {}\n", 
+                                    segment->lattice_constant * segment->bravais_vectors[1][1] );
+        this->output_to_file += fmt::format( "# zstepsize: {}\n", 
+                                    segment->lattice_constant * segment->bravais_vectors[2][2] );
+
+        this->output_to_file += fmt::format( "# xnodes: {}\n", segment->n_cells[0] );
+        this->output_to_file += fmt::format( "# ynodes: {}\n", segment->n_cells[1] );
+        this->output_to_file += fmt::format( "# znodes: {}\n", segment->n_cells[2] );
+        this->output_to_file += fmt::format( empty_line );
+
+        this->output_to_file += fmt::format( "# End: Header\n" );
+        this->output_to_file += fmt::format( empty_line );
+
+        // Data
+        this->output_to_file += fmt::format( "# Begin: Data {}\n", this->datatype_out );
+
+        int size = segment->n_cells[0]*segment->n_cells[1]*segment->n_cells[2];
+        
+        if ( format == OVF_FORMAT_BIN || format == OVF_FORMAT_BIN8 || format == OVF_FORMAT_BIN4 )
+            write_data_bin( vf, size );
+        else if ( format == OVF_FORMAT_TEXT )
+            write_data_txt( vf, size );
+        else if ( format == OVF_FORMAT_CSV )
+            write_data_txt( vf, size, "," );
+
+        this->output_to_file += fmt::format( "# End: Data {}\n", this->datatype_out );
+        this->output_to_file += fmt::format( "# End: Segment\n" );
+
+        // Append the #End keywords
+        Append_String_to_File( this->output_to_file, this->filename );
+
+        // reset output string buffer
+        this->output_to_file = "";  
+
+        // Increment the n_segments after succesfully appending the segment body to the file
+        increment_n_segments(); 
+    }
+    catch( ... )
+    {
+        // spirit_rethrow( fmt::format("Failed to write OVF file \"{}\".", this->filename) );
+    }
+}
+
+template <typename T>
+void OVF_File::write_data_bin( const T * vf, int size )
+{
+    // float test value
+    const float ref_4b = *reinterpret_cast<const float *>( &test_hex_4b );
+    
+    // double test value
+    const double ref_8b = *reinterpret_cast<const double *>( &test_hex_8b );
+    
+    if( true )//format == VF_FileFormat::OVF_BIN8 )
+    {
+        this->output_to_file += std::string( reinterpret_cast<const char *>(&ref_8b),
+            sizeof(double) );
+        
+        // in case that scalar is 4bytes long
+        if (sizeof(double) == sizeof(float))
+        {
+            double buffer[3];
+            for (unsigned int i=0; i<size; i++)
+            {
+                buffer[0] = static_cast<double>(vf[3*i + 0]);
+                buffer[1] = static_cast<double>(vf[3*i + 1]);
+                buffer[2] = static_cast<double>(vf[3*i + 2]);
+                this->output_to_file += std::string( reinterpret_cast<char *>(buffer), 
+                    sizeof(buffer) );
+            }
+        } 
+        else
+        {
+            for (unsigned int i=0; i<size; i++)
+                this->output_to_file += 
+                    std::string( reinterpret_cast<const char *>(&vf[i]), 3*sizeof(double) );
+        }
+    }
+    else if( true )//format == VF_FileFormat::OVF_BIN4 )
+    {
+        this->output_to_file += std::string( reinterpret_cast<const char *>(&ref_4b),
+            sizeof(float) );
+        
+        // in case that scalar is 8bytes long
+        if (sizeof(double) == sizeof(double))
+        {
+            float buffer[3];
+            for (unsigned int i=0; i<size; i++)
+            {
+                buffer[0] = static_cast<float>(vf[3*i + 0]);
+                buffer[1] = static_cast<float>(vf[3*i + 1]);
+                buffer[2] = static_cast<float>(vf[3*i + 2]);
+                this->output_to_file += std::string( reinterpret_cast<char *>(buffer), 
+                    sizeof(buffer) );
+            }
+        } 
+        else
+        {
+            for (unsigned int i=0; i<size; i++)
+                this->output_to_file += 
+                    std::string( reinterpret_cast<const char *>(&vf[i]), 3*sizeof(float) );
+        }
+    }
+}
+
+template <typename T>
+void OVF_File::write_data_txt( const T * vf, int size, const std::string& delimiter )
+{
+    for (int iatom = 0; iatom < size; ++iatom)
+    {
+        this->output_to_file += fmt::format( "{:22.12f}{} {:22.12f}{} {:22.12f}{}\n", 
+                                                vf[3*iatom + 0], delimiter, 
+                                                vf[3*iatom + 1], delimiter,
+                                                vf[3*iatom + 2], delimiter );
+    }
+}
 
 #endif

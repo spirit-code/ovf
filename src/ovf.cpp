@@ -148,9 +148,20 @@ catch ( ... )
     return OVF_ERROR;
 }
 
-int  ovf_write_segment(struct ovf_file *ovf_file_ptr, long codepoint)
+int ovf_write_segment_4(struct ovf_file *ovf_file_ptr, const struct ovf_segment *segment, float *data, int format)
 try
 {
+    OVF_File& file = ovf_file_ptr->_file_handle->file;
+
+    if (format != OVF_FORMAT_BIN && format != OVF_FORMAT_TEXT && format != OVF_FORMAT_CSV )
+    {
+        ovf_file_ptr->_file_handle->message_latest =
+            fmt::format("libovf ovf_write_segment_4: invalid format \'{}\'...", format);
+        return OVF_ERROR;
+    }
+
+    file.write_segment(data, segment, "libovf test comment", false, format);
+
     return OVF_OK;
 }
 catch ( ... )
@@ -158,9 +169,86 @@ catch ( ... )
     return OVF_ERROR;
 }
 
-int  ovf_append_segment(struct ovf_file *ovf_file_ptr, long codepoint)
+int ovf_write_segment_8(struct ovf_file *ovf_file_ptr, const struct ovf_segment *segment, double *data, int format)
 try
 {
+    OVF_File& file = ovf_file_ptr->_file_handle->file;
+
+    if (format != OVF_FORMAT_BIN && format != OVF_FORMAT_TEXT && format != OVF_FORMAT_CSV )
+    {
+        ovf_file_ptr->_file_handle->message_latest =
+            fmt::format("libovf ovf_write_segment_8: invalid format \'{}\'...", format);
+        return OVF_ERROR;
+    }
+
+    file.write_segment(data, segment, "libovf test comment", false, format);
+
+    return OVF_OK;
+}
+catch ( ... )
+{
+    return OVF_ERROR;
+}
+
+int ovf_append_segment_4(struct ovf_file *ovf_file_ptr, const struct ovf_segment *segment, float *data, int format)
+try
+{
+    OVF_File& file = ovf_file_ptr->_file_handle->file;
+
+    if (!file.exists())
+    {
+        ovf_file_ptr->_file_handle->message_latest = "libovf ovf_append_segment_4: file does not exist...";
+        return OVF_ERROR;
+    }
+
+    if (!file.is_OVF())
+    {
+        ovf_file_ptr->_file_handle->message_latest = "libovf ovf_append_segment_4: file is not ovf...";
+        return OVF_ERROR;
+    }
+
+    if (format != OVF_FORMAT_BIN && format != OVF_FORMAT_TEXT && format != OVF_FORMAT_CSV )
+    {
+        ovf_file_ptr->_file_handle->message_latest =
+            fmt::format("libovf ovf_append_segment_4: invalid format \'{}\'...", format);
+        return OVF_ERROR;
+    }
+
+    file.write_segment(data, segment, "libovf test comment", true, format);
+
+    return OVF_OK;
+}
+catch ( ... )
+{
+    return OVF_ERROR;
+}
+
+int ovf_append_segment_8(struct ovf_file *ovf_file_ptr, const struct ovf_segment *segment, double *data, int format)
+try
+{
+    OVF_File& file = ovf_file_ptr->_file_handle->file;
+
+    if (!file.exists())
+    {
+        ovf_file_ptr->_file_handle->message_latest = "libovf ovf_append_segment_8: file does not exist...";
+        return OVF_ERROR;
+    }
+
+    if (!file.is_OVF())
+    {
+        ovf_file_ptr->_file_handle->message_latest = "libovf ovf_append_segment_8: file is not ovf...";
+        return OVF_ERROR;
+    }
+
+    if (format != OVF_FORMAT_BIN && format != OVF_FORMAT_TEXT && format != OVF_FORMAT_CSV )
+    {
+        ovf_file_ptr->_file_handle->message_latest =
+            fmt::format("libovf ovf_append_segment_8: invalid format \'{}\'...", format);
+        return OVF_ERROR;
+    }
+
+    file.write_segment(data, segment, "libovf test comment", true, format);
+
     return OVF_OK;
 }
 catch ( ... )
