@@ -422,11 +422,12 @@ void OVF_File::write_segment( const T * vf, const ovf_segment * segment,
 
         // If we are not appending or the file does not exists we need to write the top header
         // and to turn the file_exists attribute to true so we can append more segments
-        if ( !append || !this->file_exists ) 
+        if ( !append || !this->file_exists )
         {
             write_top_header();
             read_n_segments_from_top_header();  // finds the file position of n_segments
-            this->file_exists = true; 
+            this->file_exists = true;
+            this->isOVF  = true;
         }
 
         this->output_to_file += fmt::format( empty_line );
@@ -525,7 +526,7 @@ void OVF_File::write_segment( const T * vf, const ovf_segment * segment,
         this->output_to_file = "";  
 
         // Increment the n_segments after succesfully appending the segment body to the file
-        increment_n_segments(); 
+        increment_n_segments();
     }
     catch( ... )
     {
