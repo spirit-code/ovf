@@ -1,3 +1,7 @@
+python/ovf/__init__.py
+python/LICENSE.txt
+build/*
+
 # Created by https://www.gitignore.io/api/windows,osx,linux,visualstudio,visualstudiocode,cmake,python,c++,qt
 
 ### Windows ###
