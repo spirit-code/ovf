@@ -7,7 +7,7 @@ set(META_AUTHOR_DOMAIN        "https://github.com/spirit-code/ovf")
 set(META_AUTHOR_MAINTAINER    "Gideon Mueller")
 set(META_AUTHOR_EMAIL         "g.mueller@fz-juelich.de")
 set(META_VERSION_MAJOR        "0")
-set(META_VERSION_MINOR        "0")
+set(META_VERSION_MINOR        "1")
 set(META_VERSION_PATCH        "0")
 set(META_VERSION              "${META_VERSION_MAJOR}.${META_VERSION_MINOR}.${META_VERSION_PATCH}")
 #############################################
