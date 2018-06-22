@@ -47,7 +47,6 @@ struct OVF_File
 
     // Output attributes
     std::string output_to_file;
-    std::string datatype_out;
 
     // Input attributes 
     std::string version;
@@ -494,8 +493,18 @@ void OVF_File::write_segment( const T * vf, const ovf_segment * segment,
         this->output_to_file += fmt::format( "# End: Header\n" );
         this->output_to_file += fmt::format( empty_line );
 
+        std::string datatype_out = "";
+        if ( format == OVF_FORMAT_BIN || format == OVF_FORMAT_BIN8 )
+            datatype_out = "Binary 8";
+        else if ( format == OVF_FORMAT_BIN4 ) 
+            datatype_out = "Binary 4";
+        else if( format == OVF_FORMAT_TEXT ) 
+            datatype_out = "Text";
+        else if( format == OVF_FORMAT_CSV ) 
+            datatype_out = "CSV";
+
         // Data
-        this->output_to_file += fmt::format( "# Begin: Data {}\n", this->datatype_out );
+        this->output_to_file += fmt::format( "# Begin: Data {}\n", datatype_out );
 
         int size = segment->n_cells[0]*segment->n_cells[1]*segment->n_cells[2];
         
@@ -506,7 +515,7 @@ void OVF_File::write_segment( const T * vf, const ovf_segment * segment,
         else if ( format == OVF_FORMAT_CSV )
             write_data_txt( vf, size, "," );
 
-        this->output_to_file += fmt::format( "# End: Data {}\n", this->datatype_out );
+        this->output_to_file += fmt::format( "# End: Data {}\n", datatype_out );
         this->output_to_file += fmt::format( "# End: Segment\n" );
 
         // Append the #End keywords

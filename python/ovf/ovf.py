@@ -56,6 +56,16 @@ _ovf_write_segment_8 = _ovf.ovf_write_segment_8
 _ovf_write_segment_8.argtypes = [ctypes.c_void_p, ctypes.POINTER(ovf_segment), ctypes.POINTER(ctypes.c_double), ctypes.c_int]
 _ovf_write_segment_8.restype  = ctypes.c_int
 
+### Append a segment with float precision
+_ovf_append_segment_4 = _ovf.ovf_append_segment_4
+_ovf_append_segment_4.argtypes = [ctypes.c_void_p, ctypes.POINTER(ovf_segment), ctypes.POINTER(ctypes.c_float), ctypes.c_int]
+_ovf_append_segment_4.restype  = ctypes.c_int
+
+### Append a segment with double precision
+_ovf_append_segment_8 = _ovf.ovf_append_segment_8
+_ovf_append_segment_8.argtypes = [ctypes.c_void_p, ctypes.POINTER(ovf_segment), ctypes.POINTER(ctypes.c_double), ctypes.c_int]
+_ovf_append_segment_8.restype  = ctypes.c_int
+
 ### Fetch the latest message
 _ovf_latest_message = _ovf.ovf_latest_message
 _ovf_latest_message.argtypes = [ctypes.c_void_p]
@@ -93,6 +103,16 @@ class _ovf_file(ctypes.Structure):
         elif data.dtype == np.dtype('d'):
             datap = data.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
             return int(_ovf_write_segment_8(ctypes.addressof(self), ctypes.pointer(segment), datap, fileformat))
+        else:
+            print("ovf.py read_segment_data: not able to use data type ", data.dtype)
+
+    def append_segment(self, segment, data, fileformat=-56):
+        if data.dtype == np.dtype('f'):
+            datap = data.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+            return int(_ovf_append_segment_4(ctypes.addressof(self), ctypes.pointer(segment), datap, fileformat))
+        elif data.dtype == np.dtype('d'):
+            datap = data.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
+            return int(_ovf_append_segment_8(ctypes.addressof(self), ctypes.pointer(segment), datap, fileformat))
         else:
             print("ovf.py read_segment_data: not able to use data type ", data.dtype)
 

@@ -9,16 +9,6 @@ OVF_File::OVF_File( std::string filename, int format ) :
     this->output_to_file.reserve( int( 0x08000000 ) );  // reserve 128[MByte]
     this->n_segments = -1;
 
-    // the datatype_out is used when writing an OVF file
-    // if ( this->format == VF_FileFormat::OVF_BIN8 ) 
-    //     this->datatype_out = "Binary 8";
-    // else if ( this->format == VF_FileFormat::OVF_BIN4 ) 
-    //     this->datatype_out = "Binary 4";
-    // else if( this->format == VF_FileFormat::OVF_TEXT ) 
-    //     this->datatype_out = "Text";
-    // else if( this->format == VF_FileFormat::OVF_CSV ) 
-    //     this->datatype_out = "CSV";
-
     this->ifile = NULL;
     this->n_segments = 0;
     this->n_segments_pos = 0;
