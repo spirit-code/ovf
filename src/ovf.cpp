@@ -1,6 +1,7 @@
 #include "ovf.h"
 #include <detail/OVF_File.hpp>
 #include <fmt/format.h>
+#include <iostream>
 
 
 struct ovf_file_handle
@@ -14,25 +15,33 @@ struct ovf_file_handle
 };
 
 
-struct ovf_file * ovf_open(const char *filename)
+int ovf_open(char *filename, struct ovf_file* ovf_file_ptr)
 try
 {
+    std::cout << "filename = '" << filename <<"'" << std::endl;
     // TODO: allow different file formats
     int format = 0;
 
-    struct ovf_file * ovf_file_ptr = new ovf_file{ false, false, 0, nullptr };
-    ovf_file_ptr->_file_handle = new ovf_file_handle{ "", "", OVF_File(filename, format) };
+    //struct ovf_file * ovf_file_ptr = new ovf_file{ false, false, 0, nullptr };
+    ovf_file_ptr->_file_handle = new ovf_file_handle{ "", "", OVF_File("testfile.ovf", format) };
 
     OVF_File& file = ovf_file_ptr->_file_handle->file;
     ovf_file_ptr->found      = file.exists();
     ovf_file_ptr->is_ovf     = file.is_OVF();
     ovf_file_ptr->n_segments = file.get_n_segments();
 
-    return ovf_file_ptr;
+
+    std::cout << "found = " << ovf_file_ptr->found << std::endl;
+    std::cout << "is_ovf =" << ovf_file_ptr->is_ovf << std::endl;
+    std::cout << "n_segments = " << ovf_file_ptr->n_segments << std::endl;
+
+    //return ovf_file_ptr;
+    return 7;
 }
 catch ( ... )
 {
-    return nullptr;
+    //return nullptr;
+    return 7;
 }
 
 int ovf_read_segment_header(struct ovf_file *ovf_file_ptr, int index, struct ovf_segment *segment)
@@ -58,6 +67,7 @@ try
             fmt::format("libovf ovf_read_segment_header: index ({}) >= n_segments ({})...", index, file.get_n_segments());
         return OVF_ERROR;
     }
+
 
     file.read_segment_header( segment, index );
 
