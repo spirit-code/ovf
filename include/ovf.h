@@ -59,9 +59,9 @@ struct ovf_file_handle;
 /* the main struct which keeps the info on the main header of a file */
 struct ovf_file {
     /* file could be found */
-    bool found;
+    int found;
     /* file contains an ovf header */
-    bool is_ovf;
+    int is_ovf;
     /* number of segments the file should contain */
     int n_segments;
 
