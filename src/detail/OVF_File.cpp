@@ -402,6 +402,15 @@ try
         segment->n_cells[1] = this->nodes[1];
         segment->n_cells[2] = this->nodes[2];
 
+        segment->valuedim = this->valuedim;
+
+        segment->title = new char[this->title.length() + 1];
+        strcpy(segment->title, this->title.c_str());
+        segment->meshunits = new char[this->meshunit.length() + 1];
+        strcpy(segment->meshunits, this->meshunit.c_str());
+        segment->valueunits = new char[this->valueunits.length() + 1];
+        strcpy(segment->valueunits, this->valueunits.c_str());
+
         // close the file
         this->ifile = NULL;
     }

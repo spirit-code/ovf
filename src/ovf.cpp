@@ -1,7 +1,6 @@
 #include "ovf.h"
 #include <detail/OVF_File.hpp>
 #include <fmt/format.h>
-#include <iostream>
 
 
 struct ovf_file_handle
@@ -18,7 +17,6 @@ struct ovf_file_handle
 struct ovf_file* ovf_open(const char *filename)
 try
 {
-    std::cout << "filename = '" << filename <<"'" << std::endl;
     // TODO: allow different file formats
     int format = 0;
 
@@ -40,39 +38,31 @@ catch ( ... )
 int ovf_read_segment_header(struct ovf_file * ovf_file_ptr, int index, struct ovf_segment *segment)
 try
 {
-
     OVF_File& file = ovf_file_ptr->_file_handle->file;
-
 
     if (!ovf_file_ptr->found)
     {
-        ovf_file_ptr->_file_handle->message_latest = "libovf ovf_read_segment_header: file does not exist...";
-
+        ovf_file_ptr->_file_handle->message_latest =
+            fmt::format("libovf ovf_read_segment_header: file \'{}\' does not exist...", file.filename);
         return OVF_ERROR;
     }
 
     if (!file.is_OVF())
     {
-        ovf_file_ptr->_file_handle->message_latest = "libovf ovf_read_segment_header: file is not ovf...";
-        segment->a = 7;
-    std::cout << "set a2" << std::endl;
+        ovf_file_ptr->_file_handle->message_latest = 
+            fmt::format("libovf ovf_read_segment_header: file \'{}\' is not ovf...", file.filename);
         return OVF_ERROR;
     }
 
     if (index >= file.get_n_segments())
     {
         ovf_file_ptr->_file_handle->message_latest =
-            fmt::format("libovf ovf_read_segment_header: index ({}) >= n_segments ({})...", index, file.get_n_segments());
-        segment->a = 7;
-        std::cout << "set a3" << std::endl 
-         << ovf_file_ptr->_file_handle->message_latest << std::endl;
+            fmt::format("libovf ovf_read_segment_header: index ({}) >= n_segments ({}) of file \'{}\'...",
+            index, file.get_n_segments(), file.filename);
         return OVF_ERROR;
     }
 
-
     file.read_segment_header( segment, index );
-    
-    std::cout << "n_cells" << segment->n_cells[0] << std::endl;
 
     return OVF_OK;
 }
