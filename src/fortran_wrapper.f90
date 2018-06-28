@@ -29,21 +29,23 @@ type, bind(c) :: ovf_segment
 end type ovf_segment
 
 contains
-    function get_string(pointer) result(f_string)
+    function get_string(c_pointer) result(f_string)
         implicit none
-        type(c_ptr), intent(in)                 :: pointer
-        integer(4), parameter                   :: l_max = 100000
-        character(len=l_max), pointer           :: f_ptr
+        type(c_ptr), intent(in)                 :: c_pointer
+        character(len=:), pointer               :: f_ptr
         character(len=:), allocatable           :: f_string
-        integer(4)                              :: l_str, i
+        integer(c_size_t)                       :: l_str
 
-        call c_f_pointer(pointer, f_ptr )
-        l_str = index(f_ptr, C_NULL_CHAR ) - 1
+        interface
+            function c_strlen(str_ptr) bind ( C, name = "strlen" ) result(len)
+            use, intrinsic :: iso_c_binding
+                type(c_ptr), value              :: str_ptr
+                integer(kind=c_size_t)          :: len
+            end function c_strlen
+        end interface
 
-        if(l_str == 0 .or. l_str > l_max) then
-            write (*,*) "String length exceeds l_max =", l_max
-            stop 7
-        endif
+        call c_f_pointer(c_pointer, f_ptr )
+        l_str = c_strlen(c_pointer)
 
         f_string = f_ptr(1:l_str)
     end function get_string
