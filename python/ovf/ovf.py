@@ -16,12 +16,13 @@ class ovf_segment(ctypes.Structure):
         ("valuelabels",      ctypes.c_char_p),
         ("meshtype",         ctypes.c_char_p),
         ("meshunits",        ctypes.c_char_p),
+        ("pointcount",       ctypes.c_int),
         ("n_cells",          ctypes.c_int*3),
         ("N",                ctypes.c_int),
         ("bounds_min",       ctypes.c_float*3),
         ("bounds_max",       ctypes.c_float*3),
         ("lattice_constant", ctypes.c_float),
-        ("bounds_max",       ctypes.c_float*3*3)
+        ("bravais_vectors",  ctypes.c_float*3*3)
     ]
 
     def __init__(self, title="", valuedim=0, valueunits=3, valuelabels=[], meshtype="", meshunits="", n_cells=[1,1,1]):
@@ -77,6 +78,7 @@ _ovf_latest_message.restype  = ctypes.c_char_p
 class _ovf_file(ctypes.Structure):
     ### Some properties
     _fields_ = [
+        ("filename",     ctypes.c_char_p),
         ("found",        ctypes.c_bool),
         ("is_ovf",       ctypes.c_bool),
         ("n_segments",   ctypes.c_int),

@@ -40,6 +40,7 @@ struct ovf_segment {
     /* the geometrical information on the vector field */
     char *meshtype;
     char *meshunits;
+    int pointcount;
 
     int n_cells[3];
     int N;
@@ -58,6 +59,7 @@ struct ovf_file_handle;
 
 /* the main struct which keeps the info on the main header of a file */
 struct ovf_file {
+    const char * filename;
     /* file could be found */
     int found;
     /* file contains an ovf header */

@@ -20,13 +20,12 @@ option( OVF_BUILD_PYTHON_BINDINGS "Build the shared library for Python." ON )
 
 set(SOURCE_FILES
     src/ovf.cpp
-    src/detail/OVF_File.cpp
     src/detail/Filter_File_Handle.cpp
 )
 
 set(HEADER_FILES
     src/ovf.h
-    src/detail/OVF_File.hpp
+    src/detail/Helpers.hpp
     src/detail/Filter_File_Handle.hpp
 )
 

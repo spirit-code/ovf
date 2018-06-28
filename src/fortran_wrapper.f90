@@ -3,6 +3,7 @@ use, intrinsic :: iso_c_binding
 implicit none
 
 type, bind(c) :: ovf_file
+    type(c_ptr)       :: filename
     integer(c_int)    :: found
     integer(c_int)    :: is_ovf
     integer(c_int)    :: n_segments
@@ -17,6 +18,8 @@ type, bind(c) :: ovf_segment
 
     type(c_ptr) :: meshtype
     type(c_ptr) :: meshunits
+
+    integer(kind=c_int)           :: pointcount
 
     integer(kind=c_int)           :: n_cells(3)
     integer(kind=c_int)           :: N
@@ -62,7 +65,8 @@ use ovf
     type(ovf_segment)                 :: f_segment
     integer(kind=c_int)               :: success
     integer                           :: size
-    real(kind=4), allocatable, target :: array(:,:)
+    real(kind=4), allocatable, target :: array_4(:,:)
+    real(kind=8), allocatable, target :: array_8(:,:)
     character(len=:), allocatable     :: test_str
 
 
@@ -103,6 +107,20 @@ use ovf
     end interface
 
     interface
+        function ovf_read_segment_data_8(file, index, segment, array) &
+                                        bind ( C, name = "ovf_read_segment_data_8" ) &
+                                        result(success)
+        use, intrinsic :: iso_c_binding
+        use ovf
+            type(c_ptr), value              :: file
+            integer(kind=c_int), value      :: index
+            type(ovf_segment)               :: segment
+            type(c_ptr), value              :: array
+            integer(kind=c_int)             :: success
+        end function ovf_read_segment_data_8
+    end interface
+
+    interface
         function ovf_close(file) &
                             bind ( C, name = "ovf_close" ) &
                             result(success)
@@ -112,29 +130,55 @@ use ovf
         end function ovf_close
     end interface
 
+    !---------------------
 
-    c_file = ovf_open(C_CHAR_"testfile.ovf"//C_NULL_CHAR)
-    !call C_F_POINTER(c_file, fortran_handle)
-
+    c_file = ovf_open(C_CHAR_"python/test/testfile_out.ovf"//C_NULL_CHAR)
     write (*,"(A, Z20)") "Fortran pointer = ", c_file
 
-    !call C_F_POINTER(c_segment, f_segment)
+    call C_F_POINTER(c_file, fortran_handle)
+    write (*,*) "n_segments = ", fortran_handle%n_segments
+
+    !---------------------
+
     if (ovf_read_segment_header(c_file, 1, f_segment) == -1) then
-        write (*,*) "n_cells = ", f_segment%n_cells
+        write (*,*) "n_cells =    ", f_segment%n_cells
+        write (*,*) "n_total =    ", product(f_segment%n_cells)
+
         test_str = get_string(f_segment%valueunits)
-        write (*,*) "test_str = ", test_str
+        write (*,*) "test_str =   ", test_str
     else
         write (*,*) "something did not work with ovf_read_segment_header"
     end if
 
-    size = f_segment%n_cells(1) * f_segment%n_cells(2) * f_segment%n_cells(3)
-    allocate(array(3,size))
+    !---------------------
 
-    if (ovf_read_segment_data_4(c_file, 1, f_segment, c_loc(array(1,1))) == -1) then
-        write (*,*) "array(:,1) = ", array(:,1)
+    size = product(f_segment%n_cells)
+    allocate(array_4(3,size))
+    allocate(array_8(3,size))
+
+    !---------------------
+
+    if (ovf_read_segment_data_4(c_file, 0, f_segment, c_loc(array_4(1,1))) == -1) then
+        write (*,*) "array_4(:,2) = ", array_4(:,2)
     else
         write (*,*) "something did not work with ovf_read_segment_data_4"
     end if
+
+    if (ovf_read_segment_data_8(c_file, 0, f_segment, c_loc(array_8(1,1))) == -1) then
+        write (*,*) "array_8(:,2) = ", array_8(:,2)
+    else
+        write (*,*) "something did not work with ovf_read_segment_data_8"
+    end if
+
+    !---------------------
+
+    if (ovf_read_segment_data_4(c_file, 1, f_segment, c_loc(array_4(1,1))) == -1) then
+        write (*,*) "array_4(:,2) = ", array_4(:,2)
+    else
+        write (*,*) "something did not work with ovf_read_segment_data_4"
+    end if
+
+    !---------------------
 
     success = ovf_close(c_file)
 

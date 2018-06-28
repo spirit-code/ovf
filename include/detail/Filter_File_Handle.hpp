@@ -27,9 +27,10 @@ private:
     std::ios::pos_type position_stop;
     int n_lines;
     int n_comment_lines;
+    std::ifstream myfile;
+
 public:
     std::string filename;
-    std::unique_ptr<std::ifstream> myfile;
     std::istringstream iss;
     
     // Constructs a Filter_File_Handle with string filename
@@ -63,18 +64,24 @@ public:
     int Count_Words( const std::string& str );
     // Returns the number of lines which are not starting with a comment
     int Get_N_Non_Comment_Lines();
-    
+
+    template <typename T>
+    void read( T * var, std::size_t n )
+    {
+        myfile.read( var, n );
+    };
+
     // Reads a single variable into var, with optional logging in case of failure.
     //
     //// NOTE: Capitalization is ignored (expected).
     //
-    template <typename T> bool Read_Single( T & var, std::string name,  
-                                            bool log_notfound = true )
+    template <typename T>
+    bool Read_Single( T & var, std::string name, bool log_notfound = true )
     {
         try
         {
             std::transform( name.begin(), name.end(), name.begin(), ::tolower );
-            
+
             if (Find(name))
             {
                 iss >> var;
@@ -90,12 +97,13 @@ public:
         }
         return false;
     };
-    
+
     // Require a single field. In case that it is not found an execption is thrown. 
     //
     //// NOTE: Capitalization is ignored (expected).
     //
-    template <typename T> void Require_Single( T& var, std::string name )
+    template <typename T>
+    void Require_Single( T& var, std::string name )
     {
         std::transform( name.begin(), name.end(), name.begin(), ::tolower );
         

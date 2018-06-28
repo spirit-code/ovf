@@ -1,32 +1,52 @@
 #include "ovf.h"
-#include <detail/OVF_File.hpp>
+#include <detail/Filter_File_Handle.hpp>
+#include <detail/Helpers.hpp>
 #include <fmt/format.h>
+#include <iostream>
 
 
-struct ovf_file_handle
-{
-    /* messages, e.g. in case a function returned OVF_ERROR.
-        message_out will be filled and returned by ovf_latest_message, while message_latest
-        will be filled by other functions and cleared by ovf_latest_message. */
-    std::string message_out, message_latest;
-    /* the actual OVF file */
-    OVF_File file;
-};
 
 
 struct ovf_file* ovf_open(const char *filename)
 try
 {
-    // TODO: allow different file formats
-    int format = 0;
+    // Initialize the struct
+    struct ovf_file * ovf_file_ptr = new ovf_file{ strdup(filename), false, false, 0, nullptr };
+    ovf_file_ptr->_file_handle = new ovf_file_handle{ "", "", {}};
 
-    struct ovf_file * ovf_file_ptr = new ovf_file{ false, false, 0, nullptr };
-    ovf_file_ptr->_file_handle = new ovf_file_handle{ "", "", OVF_File(filename, format) };
-    
-    OVF_File& file = ovf_file_ptr->_file_handle->file;
-    ovf_file_ptr->found      = file.exists();
-    ovf_file_ptr->is_ovf     = file.is_OVF();
-    ovf_file_ptr->n_segments = file.get_n_segments();
+    // Check if the file exists
+    std::fstream filestream( filename );
+    ovf_file_ptr->found = filestream.is_open();
+    filestream.close();
+
+    if( ovf_file_ptr->found )
+    {
+        auto ifile = std::unique_ptr<Filter_File_Handle>(new Filter_File_Handle( filename, comment_tag ));
+
+        // Check if the file has an OVF top header and check the OVF version
+        std::string version;
+        if ( ifile->Read_Single( version, "# OOMMF OVF", false ) )
+        {
+            if( version == "2.0" || version == "2" )
+                ovf_file_ptr->is_ovf = true;
+            else
+                ovf_file_ptr->_file_handle->message_latest = fmt::format(
+                    "libovf ovf_open: OVF version \'{}\' in file \'{}\' is not supported...",
+                    filename, version);
+        }
+        
+        if( ovf_file_ptr->is_ovf )
+        {
+            // Get the number of segments written in the header
+            ifile->Require_Single( ovf_file_ptr->n_segments, "# segment count:" );
+            int n_located = count_and_locate_segments(filename, ovf_file_ptr->_file_handle->segment_fpos);
+            if( ovf_file_ptr->n_segments != n_located )
+                ovf_file_ptr->_file_handle->message_latest = fmt::format(
+                    "libovf ovf_open: n_segments specified in header ({}) is different from the number"
+                    " of segments ({}) found in the file \'{}\'...",
+                    ovf_file_ptr->n_segments, n_located, filename);
+        }
+    }
 
     return ovf_file_ptr;
 }
@@ -35,34 +55,46 @@ catch ( ... )
     return nullptr;
 }
 
+
 int ovf_read_segment_header(struct ovf_file * ovf_file_ptr, int index, struct ovf_segment *segment)
 try
 {
-    OVF_File& file = ovf_file_ptr->_file_handle->file;
+    if (!ovf_file_ptr)
+        return OVF_ERROR;
 
     if (!ovf_file_ptr->found)
     {
-        ovf_file_ptr->_file_handle->message_latest =
-            fmt::format("libovf ovf_read_segment_header: file \'{}\' does not exist...", file.filename);
+        ovf_file_ptr->_file_handle->message_latest = fmt::format(
+            "libovf ovf_read_segment_header: file \'{}\' does not exist...",
+            ovf_file_ptr->filename);
         return OVF_ERROR;
     }
 
-    if (!file.is_OVF())
+    if (!ovf_file_ptr->is_ovf)
     {
-        ovf_file_ptr->_file_handle->message_latest = 
-            fmt::format("libovf ovf_read_segment_header: file \'{}\' is not ovf...", file.filename);
+        ovf_file_ptr->_file_handle->message_latest = fmt::format(
+            "libovf ovf_read_segment_header: file \'{}\' is not ovf...",
+            ovf_file_ptr->filename);
         return OVF_ERROR;
     }
 
-    if (index >= file.get_n_segments())
+    if (index < 0)
     {
-        ovf_file_ptr->_file_handle->message_latest =
-            fmt::format("libovf ovf_read_segment_header: index ({}) >= n_segments ({}) of file \'{}\'...",
-            index, file.get_n_segments(), file.filename);
+        ovf_file_ptr->_file_handle->message_latest = fmt::format(
+            "libovf ovf_read_segment_header: invalid index ({}) < 0...",
+            index, ovf_file_ptr->n_segments, ovf_file_ptr->filename);
         return OVF_ERROR;
     }
 
-    file.read_segment_header( segment, index );
+    if (index >= ovf_file_ptr->n_segments)
+    {
+        ovf_file_ptr->_file_handle->message_latest = fmt::format(
+            "libovf ovf_read_segment_header: index ({}) >= n_segments ({}) of file \'{}\'...",
+            index, ovf_file_ptr->n_segments, ovf_file_ptr->filename);
+        return OVF_ERROR;
+    }
+
+    read_segment_header( ovf_file_ptr->filename, ovf_file_ptr->_file_handle->segment_fpos, index, segment );
 
     return OVF_OK;
 }
@@ -71,27 +103,34 @@ catch ( ... )
     return OVF_ERROR;
 }
 
+
 int ovf_read_segment_data_4(struct ovf_file *ovf_file_ptr, int index, const struct ovf_segment *segment, float *data)
 try
 {
-    OVF_File& file = ovf_file_ptr->_file_handle->file;
+    if (!ovf_file_ptr)
+        return OVF_ERROR;
 
-    if (!file.exists())
+    if (!ovf_file_ptr->found)
     {
-        ovf_file_ptr->_file_handle->message_latest = "libovf ovf_read_segment_data_4: file does not exist...";
+        ovf_file_ptr->_file_handle->message_latest = fmt::format(
+            "libovf ovf_read_segment_data_4: file \'{}\' does not exist...",
+            ovf_file_ptr->filename);
         return OVF_ERROR;
     }
 
-    if (!file.is_OVF())
+    if (!ovf_file_ptr->is_ovf)
     {
-        ovf_file_ptr->_file_handle->message_latest = "libovf ovf_read_segment_data_4: file is not ovf...";
+        ovf_file_ptr->_file_handle->message_latest = fmt::format(
+            "libovf ovf_read_segment_data_4: file \'{}\' is not ovf...",
+            ovf_file_ptr->filename);
         return OVF_ERROR;
     }
 
-    if (index >= file.get_n_segments())
+    if (index >= ovf_file_ptr->n_segments)
     {
-        ovf_file_ptr->_file_handle->message_latest =
-            fmt::format("libovf ovf_read_segment_data_4: index ({}) >= n_segments ({})...", index, file.get_n_segments());
+        ovf_file_ptr->_file_handle->message_latest = fmt::format(
+            "libovf ovf_read_segment_data_4: index ({}) >= n_segments ({}) of file \'{}\'...",
+            index, ovf_file_ptr->n_segments, ovf_file_ptr->filename);
         return OVF_ERROR;
     }
 
@@ -102,7 +141,7 @@ try
     //     return OVF_ERROR;
     // }
 
-    file.read_segment(data, segment, index);
+    read_segment(ovf_file_ptr, segment, ovf_file_ptr->_file_handle->segment_fpos, index, data);
 
     return OVF_OK;
 }
@@ -111,27 +150,34 @@ catch ( ... )
     return OVF_ERROR;
 }
 
+
 int ovf_read_segment_data_8(struct ovf_file *ovf_file_ptr, int index, const struct ovf_segment *segment, double *data)
 try
 {
-    OVF_File& file = ovf_file_ptr->_file_handle->file;
+    if (!ovf_file_ptr)
+        return OVF_ERROR;
 
-    if (!file.exists())
+    if (!ovf_file_ptr->found)
     {
-        ovf_file_ptr->_file_handle->message_latest = "libovf ovf_read_segment_8: file does not exist...";
+        ovf_file_ptr->_file_handle->message_latest = fmt::format(
+            "libovf ovf_read_segment_8: file \'{}\' does not exist...",
+            ovf_file_ptr->filename);
         return OVF_ERROR;
     }
 
-    if (!file.is_OVF())
+    if (!ovf_file_ptr->is_ovf)
     {
-        ovf_file_ptr->_file_handle->message_latest = "libovf ovf_read_segment_8: file is not ovf...";
+        ovf_file_ptr->_file_handle->message_latest = fmt::format(
+            "libovf ovf_read_segment_8: file \'{}\' is not ovf...",
+            ovf_file_ptr->filename);
         return OVF_ERROR;
     }
 
-    if (index >= file.get_n_segments())
+    if (index >= ovf_file_ptr->n_segments)
     {
-        ovf_file_ptr->_file_handle->message_latest =
-            fmt::format("libovf ovf_read_segment_8: index ({}) >= n_segments ({})...", index, file.get_n_segments());
+        ovf_file_ptr->_file_handle->message_latest = fmt::format(
+            "libovf ovf_read_segment_8: index ({}) >= n_segments ({}) of file \'{}\'...",
+            index, ovf_file_ptr->n_segments, ovf_file_ptr->filename);
         return OVF_ERROR;
     }
 
@@ -142,7 +188,7 @@ try
     //     return OVF_ERROR;
     // }
 
-    file.read_segment(data, segment, index);
+    read_segment(ovf_file_ptr, segment, ovf_file_ptr->_file_handle->segment_fpos, index, data);
 
     return OVF_OK;
 }
@@ -151,19 +197,23 @@ catch ( ... )
     return OVF_ERROR;
 }
 
+
 int ovf_write_segment_4(struct ovf_file *ovf_file_ptr, const struct ovf_segment *segment, float *data, int format)
 try
 {
-    OVF_File& file = ovf_file_ptr->_file_handle->file;
+    if (!ovf_file_ptr)
+        return OVF_ERROR;
 
-    if (format != OVF_FORMAT_BIN && format != OVF_FORMAT_TEXT && format != OVF_FORMAT_CSV )
+    if( format != OVF_FORMAT_BIN  &&
+        format != OVF_FORMAT_TEXT &&
+        format != OVF_FORMAT_CSV  )
     {
         ovf_file_ptr->_file_handle->message_latest =
             fmt::format("libovf ovf_write_segment_4: invalid format \'{}\'...", format);
         return OVF_ERROR;
     }
 
-    file.write_segment(data, segment, "libovf test comment", false, format);
+    write_segment(ovf_file_ptr, segment, data, "libovf test comment", true, false, format);
 
     return OVF_OK;
 }
@@ -172,19 +222,23 @@ catch ( ... )
     return OVF_ERROR;
 }
 
+
 int ovf_write_segment_8(struct ovf_file *ovf_file_ptr, const struct ovf_segment *segment, double *data, int format)
 try
 {
-    OVF_File& file = ovf_file_ptr->_file_handle->file;
+    if (!ovf_file_ptr)
+        return OVF_ERROR;
 
-    if (format != OVF_FORMAT_BIN && format != OVF_FORMAT_TEXT && format != OVF_FORMAT_CSV )
+    if( format != OVF_FORMAT_BIN  &&
+        format != OVF_FORMAT_TEXT &&
+        format != OVF_FORMAT_CSV  )
     {
         ovf_file_ptr->_file_handle->message_latest =
             fmt::format("libovf ovf_write_segment_8: invalid format \'{}\'...", format);
         return OVF_ERROR;
     }
 
-    file.write_segment(data, segment, "libovf test comment", false, format);
+    write_segment(ovf_file_ptr, segment, data, "libovf test comment", true, false, format);
 
     return OVF_OK;
 }
@@ -193,31 +247,30 @@ catch ( ... )
     return OVF_ERROR;
 }
 
+
 int ovf_append_segment_4(struct ovf_file *ovf_file_ptr, const struct ovf_segment *segment, float *data, int format)
 try
 {
-    OVF_File& file = ovf_file_ptr->_file_handle->file;
-
-    if (!file.exists())
-    {
-        ovf_file_ptr->_file_handle->message_latest = "libovf ovf_append_segment_4: file does not exist...";
+    if (!ovf_file_ptr)
         return OVF_ERROR;
-    }
 
-    if (!file.is_OVF())
+    if (!ovf_file_ptr->is_ovf)
     {
         ovf_file_ptr->_file_handle->message_latest = "libovf ovf_append_segment_4: file is not ovf...";
         return OVF_ERROR;
     }
 
-    if (format != OVF_FORMAT_BIN && format != OVF_FORMAT_TEXT && format != OVF_FORMAT_CSV )
+    if( format != OVF_FORMAT_BIN  &&
+        format != OVF_FORMAT_TEXT &&
+        format != OVF_FORMAT_CSV  )
     {
         ovf_file_ptr->_file_handle->message_latest =
             fmt::format("libovf ovf_append_segment_4: invalid format \'{}\'...", format);
         return OVF_ERROR;
     }
 
-    file.write_segment(data, segment, "libovf test comment", true, format);
+    bool write_header = !ovf_file_ptr->found;
+    write_segment(ovf_file_ptr, segment, data, "libovf test comment", write_header, true, format);
 
     return OVF_OK;
 }
@@ -226,31 +279,30 @@ catch ( ... )
     return OVF_ERROR;
 }
 
+
 int ovf_append_segment_8(struct ovf_file *ovf_file_ptr, const struct ovf_segment *segment, double *data, int format)
 try
 {
-    OVF_File& file = ovf_file_ptr->_file_handle->file;
-
-    if (!file.exists())
-    {
-        ovf_file_ptr->_file_handle->message_latest = "libovf ovf_append_segment_8: file does not exist...";
+    if (!ovf_file_ptr)
         return OVF_ERROR;
-    }
 
-    if (!file.is_OVF())
+    if (!ovf_file_ptr->is_ovf)
     {
         ovf_file_ptr->_file_handle->message_latest = "libovf ovf_append_segment_8: file is not ovf...";
         return OVF_ERROR;
     }
 
-    if (format != OVF_FORMAT_BIN && format != OVF_FORMAT_TEXT && format != OVF_FORMAT_CSV )
+    if( format != OVF_FORMAT_BIN  &&
+        format != OVF_FORMAT_TEXT &&
+        format != OVF_FORMAT_CSV  )
     {
         ovf_file_ptr->_file_handle->message_latest =
             fmt::format("libovf ovf_append_segment_8: invalid format \'{}\'...", format);
         return OVF_ERROR;
     }
 
-    file.write_segment(data, segment, "libovf test comment", true, format);
+    bool write_header = !ovf_file_ptr->found;
+    write_segment(ovf_file_ptr, segment, data, "libovf test comment", write_header, true, format);
 
     return OVF_OK;
 }
@@ -259,9 +311,13 @@ catch ( ... )
     return OVF_ERROR;
 }
 
+
 const char * ovf_latest_message(struct ovf_file *ovf_file_ptr)
 try
 {
+    if (!ovf_file_ptr)
+        return "";
+
     ovf_file_ptr->_file_handle->message_out = ovf_file_ptr->_file_handle->message_latest;
     ovf_file_ptr->_file_handle->message_latest = "";
     return ovf_file_ptr->_file_handle->message_out.c_str();
@@ -271,9 +327,12 @@ catch( ... )
     return "";
 }
 
+
 int ovf_close(struct ovf_file *ovf_file_ptr)
 try
 {
+    if (!ovf_file_ptr)
+        return OVF_ERROR;
     delete(ovf_file_ptr->_file_handle);
     delete(ovf_file_ptr);
     return OVF_OK;
