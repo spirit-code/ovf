@@ -557,8 +557,15 @@ try
     output_to_file += fmt::format( "# End: Header\n" );
     output_to_file += fmt::format( empty_line );
 
+    if( sizeof(T) == sizeof(float) &&
+        format == OVF_FORMAT_BIN )
+        format = OVF_FORMAT_BIN4;
+    else if( sizeof(T) == sizeof(double) &&
+        format == OVF_FORMAT_BIN )
+        format = OVF_FORMAT_BIN8;
+
     std::string datatype_out = "";
-    if ( format == OVF_FORMAT_BIN || format == OVF_FORMAT_BIN8 )
+    if ( format == OVF_FORMAT_BIN8 )
         datatype_out = "Binary 8";
     else if ( format == OVF_FORMAT_BIN4 ) 
         datatype_out = "Binary 4";
@@ -579,6 +586,8 @@ try
         append_data_txt_to_string( output_to_file, vf, n_cols, n_rows );
     else if ( format == OVF_FORMAT_CSV )
         append_data_txt_to_string( output_to_file, vf, n_cols, n_rows, "," );
+    else
+        // TODO...
 
     output_to_file += fmt::format( "# End: Data {}\n", datatype_out );
     output_to_file += fmt::format( "# End: Segment\n" );

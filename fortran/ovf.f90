@@ -2,6 +2,14 @@ module ovf
 use, intrinsic :: iso_c_binding
 implicit none
 
+integer, parameter :: OVF_OK      = -1
+integer, parameter :: OVF_ERROR   = -2
+integer, parameter :: OVF_INVALID = -3
+
+integer, parameter :: OVF_FORMAT_BIN  = -55
+integer, parameter :: OVF_FORMAT_TEXT = -56
+integer, parameter :: OVF_FORMAT_CSV  = -57
+
 type, bind(c) :: ovf_file
     type(c_ptr)       :: filename
     integer(c_int)    :: found
@@ -121,6 +129,62 @@ use ovf
     end interface
 
     interface
+        function ovf_write_segment_4(file, segment, array, fileformat) &
+                                    bind ( C, name = "ovf_write_segment_4" ) &
+                                    result(success)
+        use, intrinsic :: iso_c_binding
+        use ovf
+            type(c_ptr), value              :: file
+            type(ovf_segment)               :: segment
+            type(c_ptr), value              :: array
+            integer(kind=c_int), value      :: fileformat
+            integer(kind=c_int)             :: success
+        end function ovf_write_segment_4
+    end interface
+
+    interface
+        function ovf_write_segment_8(file, segment, array, fileformat) &
+                                    bind ( C, name = "ovf_write_segment_8" ) &
+                                    result(success)
+        use, intrinsic :: iso_c_binding
+        use ovf
+            type(c_ptr), value              :: file
+            type(ovf_segment)               :: segment
+            type(c_ptr), value              :: array
+            integer(kind=c_int), value      :: fileformat
+            integer(kind=c_int)             :: success
+        end function ovf_write_segment_8
+    end interface
+
+    interface
+        function ovf_append_segment_4(file, segment, array, fileformat) &
+                                    bind ( C, name = "ovf_append_segment_4" ) &
+                                    result(success)
+        use, intrinsic :: iso_c_binding
+        use ovf
+            type(c_ptr), value              :: file
+            type(ovf_segment)               :: segment
+            type(c_ptr), value              :: array
+            integer(kind=c_int), value      :: fileformat
+            integer(kind=c_int)             :: success
+        end function ovf_append_segment_4
+    end interface
+
+    interface
+        function ovf_append_segment_8(file, segment, array, fileformat) &
+                                    bind ( C, name = "ovf_append_segment_8" ) &
+                                    result(success)
+        use, intrinsic :: iso_c_binding
+        use ovf
+            type(c_ptr), value              :: file
+            type(ovf_segment)               :: segment
+            type(c_ptr), value              :: array
+            integer(kind=c_int), value      :: fileformat
+            integer(kind=c_int)             :: success
+        end function ovf_append_segment_8
+    end interface
+
+    interface
         function ovf_close(file) &
                             bind ( C, name = "ovf_close" ) &
                             result(success)
@@ -176,6 +240,29 @@ use ovf
         write (*,*) "array_4(:,2) = ", array_4(:,2)
     else
         write (*,*) "something did not work with ovf_read_segment_data_4"
+    end if
+
+    !---------------------
+
+    success = ovf_close(c_file)
+
+    !---------------------
+
+    c_file = ovf_open(C_CHAR_"python/test/testfile_f_out.ovf"//C_NULL_CHAR)
+
+    array_4(:,1) = 4
+    array_8(:,1) = 8
+
+    if (ovf_write_segment_4(c_file, f_segment, c_loc(array_4(1,1)), OVF_FORMAT_BIN) == -1) then
+        write (*,*) "array_4(:,1) = ", array_4(:,1)
+    else
+        write (*,*) "something did not work with ovf_write_segment_4"
+    end if
+
+    if (ovf_append_segment_8(c_file, f_segment, c_loc(array_8(1,1)), OVF_FORMAT_CSV) == -1) then
+        write (*,*) "array_8(:,1) = ", array_8(:,1)
+    else
+        write (*,*) "something did not work with ovf_append_segment_8"
     end if
 
     !---------------------

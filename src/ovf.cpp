@@ -5,8 +5,6 @@
 #include <iostream>
 
 
-
-
 struct ovf_file* ovf_open(const char *filename)
 try
 {
@@ -201,8 +199,12 @@ catch ( ... )
 int ovf_write_segment_4(struct ovf_file *ovf_file_ptr, const struct ovf_segment *segment, float *data, int format)
 try
 {
-    if (!ovf_file_ptr)
+    if( !ovf_file_ptr )
         return OVF_ERROR;
+
+    if( format == OVF_FORMAT_BIN8 ||
+        format == OVF_FORMAT_BIN4 )
+        format = OVF_FORMAT_BIN;
 
     if( format != OVF_FORMAT_BIN  &&
         format != OVF_FORMAT_TEXT &&
@@ -228,6 +230,10 @@ try
 {
     if (!ovf_file_ptr)
         return OVF_ERROR;
+
+    if( format == OVF_FORMAT_BIN8 ||
+        format == OVF_FORMAT_BIN4 )
+        format = OVF_FORMAT_BIN;
 
     if( format != OVF_FORMAT_BIN  &&
         format != OVF_FORMAT_TEXT &&
@@ -260,6 +266,10 @@ try
         return OVF_ERROR;
     }
 
+    if( format == OVF_FORMAT_BIN8 ||
+        format == OVF_FORMAT_BIN4 )
+        format = OVF_FORMAT_BIN;
+
     if( format != OVF_FORMAT_BIN  &&
         format != OVF_FORMAT_TEXT &&
         format != OVF_FORMAT_CSV  )
@@ -285,6 +295,10 @@ try
 {
     if (!ovf_file_ptr)
         return OVF_ERROR;
+
+    if( format == OVF_FORMAT_BIN8 ||
+        format == OVF_FORMAT_BIN4 )
+        format = OVF_FORMAT_BIN;
 
     if (!ovf_file_ptr->is_ovf)
     {
