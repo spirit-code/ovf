@@ -27,7 +27,27 @@ type, bind(c) :: ovf_segment
     real(kind=c_float)            :: lattice_constant
     real(kind=c_float)            :: bravais_vectors(3,3)
 end type ovf_segment
-    
+
+contains
+    function get_string(pointer) result(f_string)
+        implicit none
+        type(c_ptr), intent(in)                 :: pointer
+        integer(4), parameter                   :: l_max = 100000
+        character(len=l_max), pointer           :: f_ptr
+        character(len=:), allocatable           :: f_string
+        integer(4)                              :: l_str, i
+
+        call c_f_pointer(pointer, f_ptr )
+        l_str = index(f_ptr, C_NULL_CHAR ) - 1
+
+        if(l_str == 0 .or. l_str > l_max) then
+            write (*,*) "String length exceeds l_max =", l_max
+            stop 7
+        endif
+
+        f_string = f_ptr(1:l_str)
+    end function get_string
+
 
 end module ovf
     
@@ -41,6 +61,7 @@ use ovf
     integer(kind=c_int)               :: success
     integer                           :: size
     real(kind=4), allocatable, target :: array(:,:)
+    character(len=:), allocatable     :: test_str
 
 
     interface
@@ -98,6 +119,8 @@ use ovf
     !call C_F_POINTER(c_segment, f_segment)
     if (ovf_read_segment_header(c_file, 1, f_segment) == -1) then
         write (*,*) "n_cells = ", f_segment%n_cells
+        test_str = get_string(f_segment%valueunits)
+        write (*,*) "test_str = ", test_str
     else
         write (*,*) "something did not work with ovf_read_segment_header"
     end if
