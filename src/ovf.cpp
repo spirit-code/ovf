@@ -37,7 +37,7 @@ try
         {
             // Get the number of segments written in the header
             ifile->Require_Single( ovf_file_ptr->n_segments, "# segment count:" );
-            int n_located = count_and_locate_segments(filename, ovf_file_ptr->_file_handle->segment_fpos);
+            int n_located = count_and_locate_segments(ovf_file_ptr);
             if( ovf_file_ptr->n_segments != n_located )
                 ovf_file_ptr->_file_handle->message_latest = fmt::format(
                     "libovf ovf_open: n_segments specified in header ({}) is different from the number"
@@ -92,9 +92,10 @@ try
         return OVF_ERROR;
     }
 
-    read_segment_header( ovf_file_ptr->filename, ovf_file_ptr->_file_handle->segment_fpos, index, segment );
-
-    return OVF_OK;
+    int retcode = read_segment_header( ovf_file_ptr, index, segment );
+    if (retcode != OVF_OK)
+        ovf_file_ptr->_file_handle->message_latest += "\novf_read_segment_header failed.";
+    return retcode;
 }
 catch ( ... )
 {
@@ -139,9 +140,10 @@ try
     //     return OVF_ERROR;
     // }
 
-    read_segment(ovf_file_ptr, segment, ovf_file_ptr->_file_handle->segment_fpos, index, data);
-
-    return OVF_OK;
+    int retcode = read_segment(ovf_file_ptr, segment, index, data);
+    if (retcode != OVF_OK)
+        ovf_file_ptr->_file_handle->message_latest += "\novf_read_segment_data_4 failed.";
+    return retcode;
 }
 catch ( ... )
 {
@@ -186,9 +188,10 @@ try
     //     return OVF_ERROR;
     // }
 
-    read_segment(ovf_file_ptr, segment, ovf_file_ptr->_file_handle->segment_fpos, index, data);
-
-    return OVF_OK;
+    int retcode = read_segment(ovf_file_ptr, segment, index, data);
+    if (retcode != OVF_OK)
+        ovf_file_ptr->_file_handle->message_latest += "\novf_read_segment_data_8 failed.";
+    return retcode;
 }
 catch ( ... )
 {
@@ -215,9 +218,10 @@ try
         return OVF_ERROR;
     }
 
-    write_segment(ovf_file_ptr, segment, data, "libovf test comment", true, false, format);
-
-    return OVF_OK;
+    int retcode = write_segment(ovf_file_ptr, segment, data, "libovf test comment", true, false, format);
+    if (retcode != OVF_OK)
+        ovf_file_ptr->_file_handle->message_latest += "\novf_write_segment_4 failed.";
+    return retcode;
 }
 catch ( ... )
 {
@@ -244,9 +248,10 @@ try
         return OVF_ERROR;
     }
 
-    write_segment(ovf_file_ptr, segment, data, "libovf test comment", true, false, format);
-
-    return OVF_OK;
+    int retcode = write_segment(ovf_file_ptr, segment, data, "libovf test comment", true, false, format);
+    if (retcode != OVF_OK)
+        ovf_file_ptr->_file_handle->message_latest += "\novf_write_segment_8 failed.";
+    return retcode;
 }
 catch ( ... )
 {
@@ -280,9 +285,10 @@ try
     }
 
     bool write_header = !ovf_file_ptr->found;
-    write_segment(ovf_file_ptr, segment, data, "libovf test comment", write_header, true, format);
-
-    return OVF_OK;
+    int retcode = write_segment(ovf_file_ptr, segment, data, "libovf test comment", write_header, true, format);
+    if (retcode != OVF_OK)
+        ovf_file_ptr->_file_handle->message_latest += "\novf_append_segment_4 failed.";
+    return retcode;
 }
 catch ( ... )
 {
@@ -316,9 +322,10 @@ try
     }
 
     bool write_header = !ovf_file_ptr->found;
-    write_segment(ovf_file_ptr, segment, data, "libovf test comment", write_header, true, format);
-
-    return OVF_OK;
+    int retcode = write_segment(ovf_file_ptr, segment, data, "libovf test comment", write_header, true, format);
+    if (retcode != OVF_OK)
+        ovf_file_ptr->_file_handle->message_latest += "\novf_append_segment_8 failed.";
+    return retcode;
 }
 catch ( ... )
 {
