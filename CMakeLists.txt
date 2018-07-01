@@ -98,6 +98,7 @@ macro( add_cxx_test testName testSrc )
     set_property(TARGET ${testName} PROPERTY CXX_EXTENSIONS OFF)
     # Include Directories
     target_include_directories( ${testName} PRIVATE ${PROJECT_SOURCE_DIR}/test)
+    target_include_directories( ${testName} PRIVATE ${PROJECT_SOURCE_DIR}/include)
     # Add the test
     add_test( NAME        ${testName}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
@@ -111,7 +112,7 @@ if ( OVF_BUILD_TEST )
     ### Enable CTest testing
     enable_testing()
     ### Tests
-    add_cxx_test( test_simple simple.cpp )
+    add_cxx_test( test_cpp_simple simple.cpp )
 endif()
 
 

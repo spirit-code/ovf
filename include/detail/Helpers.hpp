@@ -40,11 +40,11 @@ static const int n_segments_str_digits = 6; // can store 1M modes
 
 
 // Count the number of segments in the file. It also saves their file positions
-static int count_and_locate_segments(const std::string & filename, std::vector<std::ios::pos_type> & segment_fpos)
+static int count_and_locate_segments(ovf_file * file)
 try
 {
-    segment_fpos = std::vector<std::ios::pos_type>(0);
-    auto ifile = std::unique_ptr<Filter_File_Handle>(new Filter_File_Handle( filename, comment_tag ));
+    file->_file_handle->segment_fpos = std::vector<std::ios::pos_type>(0);
+    auto ifile = std::unique_ptr<Filter_File_Handle>(new Filter_File_Handle( file->filename, comment_tag ));
 
     // get the number of segments from the occurrences of "# Begin: Segment"
     int n_begin_segment = 0;
@@ -56,14 +56,14 @@ try
     while( ifile->Find( "# begin: segment" ) )
     {
         std::ios::pos_type pos = ifile->GetPosition(); 
-        segment_fpos.push_back( pos );
+        file->_file_handle->segment_fpos.push_back( pos );
         ifile->SetLimits( pos, end );
 
         ++n_begin_segment;
     }
     
     // find the very last keyword of the file
-    segment_fpos.push_back( end );
+    file->_file_handle->segment_fpos.push_back( end );
 
     // reset limits
     ifile->ResetLimits();
@@ -75,22 +75,21 @@ try
 }
 catch( ... )
 {
-    // spirit_rethrow( fmt::format("Failed to read OVF file \"{}\".", this->filename) );
+    file->_file_handle->message_latest = fmt::format("count_and_locate_segments failed for file \"{}\".", file->filename);
     return 0;
 }
 
 
 // Read segment's header into member variables
-static void read_segment_header( const std::string & filename,
-    const std::vector<std::ios::pos_type> & segment_fpos, int idx_seg,
-    ovf_segment * segment )
+static int read_segment_header( ovf_file * file,
+    int idx_seg, ovf_segment * segment )
 try
 {
     // open the file
-    auto ifile = std::unique_ptr<Filter_File_Handle>(new Filter_File_Handle( filename, comment_tag )); 
+    auto ifile = std::unique_ptr<Filter_File_Handle>(new Filter_File_Handle( file->filename, comment_tag )); 
 
     // Set limits within which to read
-    ifile->SetLimits( segment_fpos[idx_seg], segment_fpos[idx_seg+1] );
+    ifile->SetLimits( file->_file_handle->segment_fpos[idx_seg], file->_file_handle->segment_fpos[idx_seg+1] );
 
     // Read the header
     std::string title = "";
@@ -141,25 +140,26 @@ try
     strcpy(segment->meshunits, meshunit.c_str());
     segment->valueunits = new char[valueunits.length() + 1];
     strcpy(segment->valueunits, valueunits.c_str());
+
+    return OVF_OK;
 }
 catch( ... )
 {
-
+    file->_file_handle->message_latest = fmt::format("read_segment_header failed for file \"{}\".", file->filename);
+    return OVF_ERROR;
 }
 
 
 // Read segment's data block
 template <typename T>
-void read_segment( const ovf_file * file, const ovf_segment * segment,
-    const std::vector<std::ios::pos_type> & segment_fpos, int idx_seg,
-    T * vf)
+int read_segment( const ovf_file * file, const ovf_segment * segment, int idx_seg, T * vf)
 try
 {
     // open the file
     auto ifile = std::shared_ptr<Filter_File_Handle>(
                         new Filter_File_Handle( file->filename, comment_tag ) );
 
-    ifile->SetLimits( segment_fpos[idx_seg], segment_fpos[idx_seg+1] );
+    ifile->SetLimits( file->_file_handle->segment_fpos[idx_seg], file->_file_handle->segment_fpos[idx_seg+1] );
 
     // Raw data representation
     std::string datatype_tmp = "", datatype = "";
@@ -190,7 +190,8 @@ try
     }
     else
     {
-        // TODO...
+        file->_file_handle->message_latest = fmt::format("read_segment failed for file \"{}\". Invalid data format {}", file->filename, datatype);
+        return OVF_ERROR;
     }
 
     int n_cols = segment->valuedim;
@@ -207,7 +208,7 @@ try
         if ( read_8byte != ref_8b )
         {
             file->_file_handle->message_latest = "OVF initial check value of binary data is inconsistent";
-            return;
+            return OVF_ERROR;
         }
     }
     else if( i_datatype == OVF_FORMAT_BIN4 )
@@ -220,28 +221,35 @@ try
         if ( read_4byte != ref_4b ) 
         {
             file->_file_handle->message_latest = "OVF initial check value of binary data is inconsistent";
-            return;
+            return OVF_ERROR;
         }
     }
 
     // Read the data
     if( i_datatype == OVF_FORMAT_BIN8 )
-        read_data_bin( ifile, n_cols, n_rows, 8,  vf );
+        return read_data_bin( ifile, n_cols, n_rows, 8,  vf );
     else if( i_datatype == OVF_FORMAT_BIN4 )
-        read_data_bin( ifile, n_cols, n_rows, 4,  vf );
+        return read_data_bin( ifile, n_cols, n_rows, 4,  vf );
     else if( i_datatype == OVF_FORMAT_TEXT )
-        read_data_txt( ifile, n_cols, n_rows, vf );
+        return read_data_txt( ifile, n_cols, n_rows, vf );
     else if( i_datatype == OVF_FORMAT_CSV )
-        read_data_txt( ifile, n_cols, n_rows, vf, "," );
+        return read_data_txt( ifile, n_cols, n_rows, vf, "," );
+    else
+    {
+        file->_file_handle->message_latest = fmt::format(
+            "read_segment failed - invalid datatype \'{}\' for file \"{}\".", datatype, file->filename);
+        return OVF_ERROR;
+    }
 }
 catch( ... )
 {
-
+    file->_file_handle->message_latest = fmt::format("read_segment failed for file \"{}\".", file->filename);
+    return OVF_ERROR;
 }
 
 
 template <typename T>
-void read_data_bin( std::shared_ptr<Filter_File_Handle> ifile, int n_cols, int n_rows, int binary_length, T * vf )
+int read_data_bin( std::shared_ptr<Filter_File_Handle> ifile, int n_cols, int n_rows, int binary_length, T * vf )
 try
 {
     // Set the input stream indicator to the end of the line describing the data block
@@ -272,15 +280,17 @@ try
                 vf[n_cols*row + col] = static_cast<T>(buffer[col]);
         }
     }
+    return OVF_OK;
 }
 catch (...)
 {
-    // spirit_rethrow( "Failed to read OVF binary data" );
+    // file->_file_handle->message_latest = fmt::format("read_data_bin failed for file \"{}\".", file->filename);
+    return OVF_ERROR;
 }
 
 
 template <typename T>
-void read_data_txt( std::shared_ptr<Filter_File_Handle> ifile, int n_cols, int n_rows, T * vf, const std::string& delimiter = "" )
+int read_data_txt( std::shared_ptr<Filter_File_Handle> ifile, int n_cols, int n_rows, T * vf, const std::string& delimiter = "" )
 try
 {
     for (int row=0; row<n_rows; row++)
@@ -290,10 +300,12 @@ try
         for (int col=0; col<n_cols; ++col)
             ifile->iss >> vf[n_cols*row + col];
     }
+    return OVF_OK;
 }
 catch (...)
 {
-    // spirit_rethrow( "Failed to check OVF initial binary value" );
+    // file->_file_handle->message_latest = fmt::format("read_data_txt failed for file \"{}\".", file->filename);
+    return OVF_ERROR;
 }
 
 
@@ -350,7 +362,7 @@ static std::string top_header_string()
     return ret;
 }
 
-static void increment_n_segments(ovf_file *file)
+static int increment_n_segments(ovf_file *file)
 try
 {
     std::fstream filestream( file->filename ); 
@@ -387,11 +399,13 @@ try
     filestream << ( padding + new_n_str );
 
     filestream.close();
+
+    return OVF_OK;
 }
 catch( ... )
 {
-    // spirit_rethrow( fmt::format("Failed to increment n_segments in OVF file \"{}\".", 
-    //                 this->filename) );
+    file->_file_handle->message_latest = fmt::format("increment_n_segments failed for file \"{}\".", file->filename);
+    return OVF_ERROR;
 }
 
 template <typename T>
@@ -477,7 +491,7 @@ catch( ... )
 
 
 template <typename T>
-void write_segment( ovf_file *file, const ovf_segment * segment, const T * vf,
+int write_segment( ovf_file *file, const ovf_segment * segment, const T * vf,
                     const std::string comment, bool write_header,
                     const bool append = false, int format = OVF_FORMAT_BIN8 )
 try
@@ -598,12 +612,16 @@ try
     else
         Strings_to_File({output_to_file}, file->filename);
 
+    file->found  = true;
+    file->is_ovf = true;
+
     // Increment the n_segments after succesfully appending the segment body to the file
-    increment_n_segments(file);
+    return increment_n_segments(file);
 }
 catch( ... )
 {
-    // spirit_rethrow( fmt::format("Failed to write OVF file \"{}\".", this->filename) );
+    // file->_file_handle->message_latest = fmt::format("write_segment failed for file \"{}\".", file->filename);
+    return OVF_ERROR;
 }
 
 
