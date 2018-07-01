@@ -1,10 +1,10 @@
-
 program main
-use, intrinsic :: iso_c_binding
 use ovf
 
-    write (*,*) "---------- fortran test of ovf ----------"
+type(ovf_file)      :: file
 
-    write (*,*) "------ finished fortran test of ovf -----"
-
+call file%load("testfile.ovf")
+    write (*,*) "Found = ",   file%found
+    write (*,*) "is_ovf = ",  file%is_ovf
+    write (*,*) "n_segments", file%n_segments
 end program main
