@@ -74,9 +74,9 @@ if (OVF_BUILD_FORTRAN_BINDINGS)
     # this is where we will place the Fortran module files
     set(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_SOURCE_DIR}/fortran)
 
-    add_library(${PROJECT_NAME}_fortran SHARED fortran/ovf.f90)
+    add_library(${PROJECT_NAME}_fortran STATIC ${PROJECT_SOURCE_DIR}/fortran/ovf.f90)
+    target_link_libraries( ${PROJECT_NAME}_fortran ${PROJECT_NAME}_static )
 
-    set_property(TARGET ${PROJECT_NAME}_fortran PROPERTY OUTPUT_NAME "${PROJECT_NAME}")
     # set_property(TARGET ${PROJECT_NAME}_fortran PROPERTY LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/fortran)
 endif()
 
@@ -90,7 +90,7 @@ macro( add_cxx_test testName testSrc )
     # Executable
     add_executable( ${testName} test/main.cpp ${PROJECT_SOURCE_DIR}/test/${testSrc} )
     # Link Library
-    target_link_libraries( ${testName} ${META_PROJECT_NAME}_static )
+    target_link_libraries( ${testName} ${PROJECT_NAME}_static )
     # Properties
     set_property(TARGET ${testName} PROPERTY RUNTIME_OUTPUT_DIRECTORY ${TEST_RUNTIME_OUTPUT_DIRECTORY})
     set_property(TARGET ${testName} PROPERTY CXX_STANDARD 11)
@@ -145,9 +145,10 @@ macro( add_fortran_test testName testSrc )
     # Executable
     add_executable( ${testName} ${PROJECT_SOURCE_DIR}/fortran/test/${testSrc} )
     # Link Library
-    target_link_libraries( ${testName} ${META_PROJECT_NAME}_static )
+    target_link_libraries( ${testName} ${PROJECT_NAME}_fortran )
     # Properties
     set_property(TARGET ${testName} PROPERTY RUNTIME_OUTPUT_DIRECTORY ${TEST_RUNTIME_OUTPUT_DIRECTORY})
+    set_property(TARGET ${testName} PROPERTY LINKER_LANGUAGE Fortran)
     # Add the test
     add_test( NAME        ${testName}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
