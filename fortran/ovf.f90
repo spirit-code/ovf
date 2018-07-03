@@ -1,42 +1,42 @@
 module ovf
-use, intrinsic :: iso_c_binding
+use, intrinsic  :: iso_c_binding
 implicit none
 
-integer, parameter :: OVF_OK      = -1
-integer, parameter :: OVF_ERROR   = -2
-integer, parameter :: OVF_INVALID = -3
+integer, parameter  :: OVF_OK      = -1
+integer, parameter  :: OVF_ERROR   = -2
+integer, parameter  :: OVF_INVALID = -3
 
-integer, parameter :: OVF_FORMAT_BIN  = -55
-integer, parameter :: OVF_FORMAT_TEXT = -56
-integer, parameter :: OVF_FORMAT_CSV  = -57
+integer, parameter  :: OVF_FORMAT_BIN  = -55
+integer, parameter  :: OVF_FORMAT_TEXT = -56
+integer, parameter  :: OVF_FORMAT_CSV  = -57
 
 type, bind(c) :: c_ovf_file
-    type(c_ptr)       :: filename
-    integer(c_int)    :: found
-    integer(c_int)    :: is_ovf
-    integer(c_int)    :: n_segments
-    type(c_ptr)       :: file_handle
+    type(c_ptr)     :: filename
+    integer(c_int)  :: found
+    integer(c_int)  :: is_ovf
+    integer(c_int)  :: n_segments
+    type(c_ptr)     :: file_handle
 end type c_ovf_file
 
 type, bind(c) :: c_ovf_segment
-    type(c_ptr)  :: title
-    integer(kind=c_int)           :: valuedim
-    type(c_ptr) :: valueunits
-    type(c_ptr) :: valuelabels
+    type(c_ptr)         :: title
+    integer(kind=c_int) :: valuedim
+    type(c_ptr)         :: valueunits
+    type(c_ptr)         :: valuelabels
 
-    type(c_ptr) :: meshtype
-    type(c_ptr) :: meshunits
+    type(c_ptr)         :: meshtype
+    type(c_ptr)         :: meshunits
 
-    integer(kind=c_int)           :: pointcount
+    integer(kind=c_int) :: pointcount
 
-    integer(kind=c_int)           :: n_cells(3)
-    integer(kind=c_int)           :: N
+    integer(kind=c_int) :: n_cells(3)
+    integer(kind=c_int) :: N
 
-    real(kind=c_float)            :: bounds_min(3)
-    real(kind=c_float)            :: bounds_max(3)
+    real(kind=c_float)  :: bounds_min(3)
+    real(kind=c_float)  :: bounds_max(3)
 
-    real(kind=c_float)            :: lattice_constant
-    real(kind=c_float)            :: bravais_vectors(3,3)
+    real(kind=c_float)  :: lattice_constant
+    real(kind=c_float)  :: bravais_vectors(3,3)
 end type c_ovf_segment
 
 type :: ovf_segment 
@@ -49,9 +49,11 @@ type :: ovf_file
     character(len=:), allocatable   :: filename
     logical                         :: found, is_ovf
     integer                         :: n_segments
-    type(c_ptr)                     :: file_handle
+    type(c_ptr)                     :: private_file_binding
 contains
-    procedure :: load => load_ovf_file
+    procedure :: open_file           => open_file
+    procedure :: read_segment_header => read_segment_header
+    procedure :: close_file          => close_file
 end type ovf_file
 
 contains
@@ -59,10 +61,11 @@ contains
     function get_string(c_pointer) result(f_string)
         use, intrinsic :: iso_c_binding
         implicit none
-        type(c_ptr), intent(in)                 :: c_pointer
-        character(len=:), pointer               :: f_ptr
-        character(len=:), allocatable           :: f_string
-        integer(c_size_t)                       :: l_str
+        type(c_ptr), intent(in)         :: c_pointer
+        character(len=:), allocatable   :: f_string
+
+        character(len=:), pointer       :: f_ptr
+        integer(c_size_t)               :: l_str
 
         interface
             function c_strlen(str_ptr) bind ( C, name = "strlen" ) result(len)
@@ -78,34 +81,93 @@ contains
         f_string = f_ptr(1:l_str)
     end function get_string
 
-    subroutine load_ovf_file(self, filename)
+    subroutine open_file(self, filename)
         implicit none
-        class(ovf_file)               :: self
-        character(len=*), intent(in)  :: filename
-        type(c_ovf_file), pointer       :: f_handle
+        class(ovf_file)                 :: self
+        character(len=*), intent(in)    :: filename
+
+        type(c_ovf_file), pointer       :: f_file
+        type(c_ptr)                     :: c_file
 
         interface
             function ovf_open(filename) &
                             bind ( C, name = "ovf_open" ) 
             use, intrinsic :: iso_c_binding
-                character(len=1,kind=c_char)       :: filename(*)
-                type(c_ptr)                        :: ovf_open
+                character(len=1,kind=c_char)    :: filename(*)
+                type(c_ptr)                     :: ovf_open
             end function ovf_open
         end interface
 
-        call c_f_pointer(ovf_open(trim(filename) // c_null_char), f_handle)
+        c_file = ovf_open(trim(filename) // c_null_char)
+        call c_f_pointer(c_file, f_file)
 
-        self%filename    = get_string(f_handle%filename)
-        self%found       = f_handle%found  == 1
-        self%is_ovf      = f_handle%is_ovf == 1
-        self%n_segments  = f_handle%n_segments
-        self%file_handle = f_handle%file_handle
-    end subroutine load_ovf_file
+        self%filename      = get_string(f_file%filename)
+        self%found         = f_file%found  == 1
+        self%is_ovf        = f_file%is_ovf == 1
+        self%n_segments    = f_file%n_segments
+        self%private_file_binding = c_file
+    end subroutine open_file
+
+
+    function read_segment_header(self, segment) result(success)
+        implicit none
+        class(ovf_file)     :: self
+        type(ovf_segment)   :: segment
+        integer             :: success
+
+        type(c_ovf_segment) :: f_segment
+        type(c_ptr)         :: c_segment
+
+        interface
+            function ovf_read_segment_header(file, index, segment) &
+                                            bind ( C, name = "ovf_read_segment_header" ) &
+                                            result(success)
+            use, intrinsic :: iso_c_binding
+            Import :: c_ovf_file, c_ovf_segment
+                type(c_ptr), value              :: file
+                integer(kind=c_int), value      :: index 
+                type(c_ptr), value              :: segment
+                integer(kind=c_int)             :: success
+            end function ovf_read_segment_header
+        end interface
+
+        c_segment = c_loc(f_segment)
+        success = ovf_read_segment_header(self%private_file_binding, 0, c_segment)
+
+        if ( success == OVF_OK) then
+            segment%Title      = get_string(f_segment%title)
+            segment%ValueUnits = get_string(f_segment%valueunits)
+
+            segment%N_Cells(:) = f_segment%n_cells(:)
+            segment%N          = product(f_segment%n_cells)
+        end if
+
+    end function read_segment_header
+
+
+    function close_file(self) result(success)
+        implicit none
+        class(ovf_file) :: self
+        integer         :: success
+
+        interface
+            function ovf_close(file) &
+                                bind ( C, name = "ovf_close" ) &
+                                result(success)
+            use, intrinsic :: iso_c_binding
+                type(c_ptr), value              :: file
+                integer(kind=c_int)             :: success
+            end function ovf_close
+        end interface
+
+        success = ovf_close(self%private_file_binding)
+
+    end function close_file
 
 
 end module ovf
 
-    
+
 ! program main
 ! use, intrinsic :: iso_c_binding
 ! use ovf
@@ -119,21 +181,6 @@ end module ovf
 !     real(kind=8), allocatable, target :: array_8(:,:)
 !     character(len=:), allocatable     :: test_str
 
-
-
-
-!     interface
-!         function ovf_read_segment_header(file, index, segment) &
-!                                         bind ( C, name = "ovf_read_segment_header" ) &
-!                                         result(success)
-!         use, intrinsic :: iso_c_binding
-!         use ovf
-!             type(c_ptr), value              :: file
-!             integer(kind=c_int), value      :: index 
-!             type(c_ovf_segment)               :: segment
-!             integer(kind=c_int)             :: success
-!         end function ovf_read_segment_header
-!     end interface
 
 !     interface
 !         function ovf_read_segment_data_4(file, index, segment, array) &
@@ -219,15 +266,6 @@ end module ovf
 !         end function ovf_append_segment_8
 !     end interface
 
-!     interface
-!         function ovf_close(file) &
-!                             bind ( C, name = "ovf_close" ) &
-!                             result(success)
-!         use, intrinsic :: iso_c_binding
-!             type(c_ptr), value              :: file
-!             integer(kind=c_int)             :: success
-!         end function ovf_close
-!     end interface
 
 !     write (*,*) "Running"
 
