@@ -53,11 +53,15 @@ type :: ovf_file
 contains
     procedure :: open_file           => open_file
     procedure :: read_segment_header => read_segment_header
+    procedure :: read_segment_data_4
+    procedure :: read_segment_data_8
+    GENERIC   :: read_segment_data   => read_segment_data_4, read_segment_data_8
     procedure :: close_file          => close_file
 end type ovf_file
 
 contains
 
+    ! Helper function to generate a Fortran string from a C char pointer
     function get_string(c_pointer) result(f_string)
         use, intrinsic :: iso_c_binding
         implicit none
@@ -80,6 +84,39 @@ contains
 
         f_string = f_ptr(1:l_str)
     end function get_string
+
+
+    ! Helper function to create C-struct c_ovf_secment from Fortran type ovf_segment
+    function get_c_ovf_segment(segment) result(c_segment)
+        use, intrinsic :: iso_c_binding
+        implicit none
+        type(ovf_segment), intent(in) :: segment
+        type(c_ovf_segment)           :: c_segment
+
+        c_segment%title      = c_loc(segment%Title)
+        c_segment%valueunits = c_loc(segment%ValueUnits)
+        c_segment%valuedim   = segment%ValueDim
+        c_segment%n_cells(:) = segment%n_cells(:)
+        c_segment%N          = product(segment%n_cells)
+    end function get_c_ovf_segment
+
+
+    ! Helper function to turn C-struct c_ovf_secment into Fortran type ovf_segment
+    subroutine fill_ovf_segment(c_segment, segment)
+        use, intrinsic :: iso_c_binding
+        implicit none
+        type(c_ovf_segment), intent(in)    :: c_segment
+        type(ovf_segment),   intent(inout) :: segment
+
+        segment%Title      = get_string(c_segment%title)
+
+        segment%ValueUnits = get_string(c_segment%valueunits)
+        segment%ValueDim   = c_segment%valuedim
+
+        segment%N_Cells(:) = c_segment%n_cells(:)
+        segment%N          = product(c_segment%n_cells)
+    end subroutine fill_ovf_segment
+
 
     subroutine open_file(self, filename)
         implicit none
@@ -115,8 +152,8 @@ contains
         type(ovf_segment)   :: segment
         integer             :: success
 
-        type(c_ovf_segment) :: f_segment
-        type(c_ptr)         :: c_segment
+        type(c_ovf_segment) :: c_segment
+        type(c_ptr)         :: c_segment_ptr
 
         interface
             function ovf_read_segment_header(file, index, segment) &
@@ -131,18 +168,120 @@ contains
             end function ovf_read_segment_header
         end interface
 
-        c_segment = c_loc(f_segment)
-        success = ovf_read_segment_header(self%private_file_binding, 0, c_segment)
+        c_segment_ptr = c_loc(c_segment)
+        success = ovf_read_segment_header(self%private_file_binding, 0, c_segment_ptr)
 
         if ( success == OVF_OK) then
-            segment%Title      = get_string(f_segment%title)
-            segment%ValueUnits = get_string(f_segment%valueunits)
-
-            segment%N_Cells(:) = f_segment%n_cells(:)
-            segment%N          = product(f_segment%n_cells)
+            call fill_ovf_segment(c_segment, segment)
         end if
 
     end function read_segment_header
+
+
+    function read_segment_data_4(self, segment, array, index_in) result(success)
+        implicit none
+        class(ovf_file)               :: self
+        type(ovf_segment), intent(in) :: segment
+        real(kind=4), allocatable     :: array(:,:)
+        integer, optional, intent(in) :: index_in
+        integer                       :: success
+
+        integer                       :: index
+        type(c_ovf_segment)           :: c_segment
+        type(c_ptr)                   :: c_segment_ptr
+        type(c_ptr)                   :: c_array_ptr
+
+        interface
+            function ovf_read_segment_data_4(file, index, segment, array) &
+                                            bind ( C, name = "ovf_read_segment_data_4" ) &
+                                            result(success)
+            use, intrinsic :: iso_c_binding
+            Import :: c_ovf_file, c_ovf_segment
+                type(c_ptr), value          :: file
+                integer(kind=c_int), value  :: index
+                type(c_ptr), value          :: segment
+                type(c_ptr), value          :: array
+                integer(kind=c_int)         :: success
+            end function ovf_read_segment_data_4
+        end interface
+
+        if( present(index_in) ) then
+            index = index_in
+        else
+            index = 1
+        end if
+
+        if (allocated(array)) then
+            ! TODO: check array dimensions
+        else
+            allocate( array(segment%ValueDim, segment%N) )
+            array(:,:) = 0
+        endif
+
+        ! Parse into C-structure
+        c_segment = get_c_ovf_segment(segment)
+
+        ! Get C-pointers to C-structures
+        c_segment_ptr = c_loc(c_segment)
+        c_array_ptr   = c_loc(array(1,1))
+
+        ! Call the C-API
+        success = ovf_read_segment_data_4(self%private_file_binding, index-1, c_segment_ptr, c_array_ptr)
+
+    end function read_segment_data_4
+
+
+    function read_segment_data_8(self, segment, array, index_in) result(success)
+        implicit none
+        class(ovf_file)               :: self
+        type(ovf_segment), intent(in) :: segment
+        real(kind=8), allocatable     :: array(:,:)
+        integer, optional, intent(in) :: index_in
+        integer                       :: success
+
+        integer                       :: index
+        type(c_ovf_segment)           :: c_segment
+        type(c_ptr)                   :: c_segment_ptr
+        type(c_ptr)                   :: c_array_ptr
+
+        interface
+            function ovf_read_segment_data_8(file, index, segment, array) &
+                                            bind ( C, name = "ovf_read_segment_data_8" ) &
+                                            result(success)
+            use, intrinsic :: iso_c_binding
+            Import :: c_ovf_file, c_ovf_segment
+                type(c_ptr), value          :: file
+                integer(kind=c_int), value  :: index
+                type(c_ptr), value          :: segment
+                type(c_ptr), value          :: array
+                integer(kind=c_int)         :: success
+            end function ovf_read_segment_data_8
+        end interface
+
+        if( present(index_in) ) then
+            index = index_in
+        else
+            index = 1
+        end if
+
+        if (allocated(array)) then
+            ! TODO: check array dimensions
+        else
+            allocate( array(segment%ValueDim, segment%N) )
+            array(:,:) = 0
+        endif
+
+        ! Parse into C-structure
+        c_segment = get_c_ovf_segment(segment)
+
+        ! Get C-pointers to C-structures
+        c_segment_ptr = c_loc(c_segment)
+        c_array_ptr   = c_loc(array(1,1))
+
+        ! Call the C-API
+        success = ovf_read_segment_data_8(self%private_file_binding, index-1, c_segment_ptr, c_array_ptr)
+
+    end function read_segment_data_8
 
 
     function close_file(self) result(success)
@@ -181,34 +320,6 @@ end module ovf
 !     real(kind=8), allocatable, target :: array_8(:,:)
 !     character(len=:), allocatable     :: test_str
 
-
-!     interface
-!         function ovf_read_segment_data_4(file, index, segment, array) &
-!                                         bind ( C, name = "ovf_read_segment_data_4" ) &
-!                                         result(success)
-!         use, intrinsic :: iso_c_binding
-!         use ovf
-!             type(c_ptr), value              :: file
-!             integer(kind=c_int), value      :: index
-!             type(c_ovf_segment)               :: segment
-!             type(c_ptr), value              :: array
-!             integer(kind=c_int)             :: success
-!         end function ovf_read_segment_data_4
-!     end interface
-
-!     interface
-!         function ovf_read_segment_data_8(file, index, segment, array) &
-!                                         bind ( C, name = "ovf_read_segment_data_8" ) &
-!                                         result(success)
-!         use, intrinsic :: iso_c_binding
-!         use ovf
-!             type(c_ptr), value              :: file
-!             integer(kind=c_int), value      :: index
-!             type(c_ovf_segment)               :: segment
-!             type(c_ptr), value              :: array
-!             integer(kind=c_int)             :: success
-!         end function ovf_read_segment_data_8
-!     end interface
 
 !     interface
 !         function ovf_write_segment_4(file, segment, array, fileformat) &
