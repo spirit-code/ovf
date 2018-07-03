@@ -83,6 +83,9 @@ else
 endif
 ```
 
+For more information on how to generate modern Fortran bindings,
+see also https://github.com/MRedies/Interfacing-Fortran
+
 How to embed it into your project
 ---------------------------------
 
@@ -131,3 +134,33 @@ let you change/update the package without having to re-install it.
 cd python
 pip install -e .
 ```
+
+### Build without CMake
+
+The following is an example of how to manually build the C library and
+link it with bindings into a corresponding Fortran executable, using gcc.
+
+C library:
+```
+g++ -DFMT_HEADER_ONLY -Iinclude -fPIC -std=c++11 -c src/ovf.cpp
+g++ -DFMT_HEADER_ONLY -Iinclude -fPIC -std=c++11 -c src/detail/Filter_File_Handle.cpp
+
+ar qc libovf_static.a  ovf.o Filter_File_Handle.o
+ranlib libovf_static.a
+```
+
+Fortran library:
+```
+gfortran -fPIC -c fortran/ovf.f90 -o ovf.f90.o
+
+ar qc libovf_fortran.a  ovf.f90.o
+ranlib libovf_fortran.a
+```
+
+Fortran executable
+```
+gfortran -c fortran/test/simple.f90 -o simple.f90.o
+gfortran simple.f90.o libovf_fortran.a libovf_static.a -lstdc++ -o test_fortran_simple
+```
+
+*Note: on OSX simply replace `-lstdc++` with `-lc++`*
