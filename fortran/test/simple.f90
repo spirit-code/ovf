@@ -16,7 +16,8 @@ use ovf
         write (*,*) "is_ovf     = ", file%is_ovf
         write (*,*) "n_segments = ", file%n_segments
     else
-        write (*,*) "test read_segment_header on \'nonexistent.ovf\' should have returned OVF_ERROR... Message: ", file%latest_message
+        write (*,*) "test read_segment_header on \'nonexistent.ovf\' should have returned OVF_ERROR... Message: ", &
+            file%latest_message
         STOP 1
     endif
     ! Close file

@@ -97,8 +97,8 @@ contains
     function get_c_ovf_segment(segment) result(c_segment)
         use, intrinsic :: iso_c_binding
         implicit none
-        type(ovf_segment), intent(in) :: segment
-        type(c_ovf_segment)           :: c_segment
+        type(ovf_segment), intent(in), target   :: segment
+        type(c_ovf_segment)                     :: c_segment
 
         c_segment%title      = c_loc(segment%Title)
         c_segment%valueunits = c_loc(segment%ValueUnits)
@@ -178,12 +178,12 @@ contains
 
     function read_segment_header(self, segment) result(success)
         implicit none
-        class(ovf_file)     :: self
-        type(ovf_segment)   :: segment
-        integer             :: success
+        class(ovf_file)             :: self
+        type(ovf_segment)           :: segment
+        integer                     :: success
 
-        type(c_ovf_segment) :: c_segment
-        type(c_ptr)         :: c_segment_ptr
+        type(c_ovf_segment), target :: c_segment
+        type(c_ptr)                 :: c_segment_ptr
 
         interface
             function ovf_read_segment_header(file, index, segment) &
@@ -212,16 +212,16 @@ contains
 
     function read_segment_data_4(self, segment, array, index_in) result(success)
         implicit none
-        class(ovf_file)               :: self
-        type(ovf_segment), intent(in) :: segment
-        real(kind=4), allocatable     :: array(:,:)
-        integer, optional, intent(in) :: index_in
-        integer                       :: success
+        class(ovf_file)                     :: self
+        type(ovf_segment), intent(in)       :: segment
+        real(kind=4), allocatable, target   :: array(:,:)
+        integer, optional, intent(in)       :: index_in
+        integer                             :: success
 
-        integer                       :: index
-        type(c_ovf_segment)           :: c_segment
-        type(c_ptr)                   :: c_segment_ptr
-        type(c_ptr)                   :: c_array_ptr
+        integer                             :: index
+        type(c_ovf_segment), target         :: c_segment
+        type(c_ptr)                         :: c_segment_ptr
+        type(c_ptr)                         :: c_array_ptr
 
         interface
             function ovf_read_segment_data_4(file, index, segment, array) &
@@ -267,16 +267,16 @@ contains
 
     function read_segment_data_8(self, segment, array, index_in) result(success)
         implicit none
-        class(ovf_file)               :: self
-        type(ovf_segment), intent(in) :: segment
-        real(kind=8), allocatable     :: array(:,:)
-        integer, optional, intent(in) :: index_in
-        integer                       :: success
+        class(ovf_file)                     :: self
+        type(ovf_segment), intent(in)       :: segment
+        real(kind=8), allocatable, target   :: array(:,:)
+        integer, optional, intent(in)       :: index_in
+        integer                             :: success
 
-        integer                       :: index
-        type(c_ovf_segment)           :: c_segment
-        type(c_ptr)                   :: c_segment_ptr
-        type(c_ptr)                   :: c_array_ptr
+        integer                     :: index
+        type(c_ovf_segment), target :: c_segment
+        type(c_ptr)                 :: c_segment_ptr
+        type(c_ptr)                 :: c_array_ptr
 
         interface
             function ovf_read_segment_data_8(file, index, segment, array) &
@@ -322,14 +322,14 @@ contains
 
     function write_segment_4(self, segment, array, fileformat_in) result(success)
         implicit none
-        class(ovf_file)               :: self
-        type(ovf_segment), intent(in) :: segment
-        real(kind=4), allocatable     :: array(:,:)
-        integer, optional, intent(in) :: fileformat_in
-        integer                       :: success
+        class(ovf_file)                     :: self
+        type(ovf_segment), intent(in)       :: segment
+        real(kind=4), allocatable, target   :: array(:,:)
+        integer, optional, intent(in)       :: fileformat_in
+        integer                             :: success
 
         integer                       :: fileformat
-        type(c_ovf_segment)           :: c_segment
+        type(c_ovf_segment), target           :: c_segment
         type(c_ptr)                   :: c_segment_ptr
         type(c_ptr)                   :: c_array_ptr
 
@@ -370,16 +370,16 @@ contains
 
     function write_segment_8(self, segment, array, fileformat_in) result(success)
         implicit none
-        class(ovf_file)               :: self
-        type(ovf_segment), intent(in) :: segment
-        real(kind=8), allocatable     :: array(:,:)
-        integer, optional, intent(in) :: fileformat_in
-        integer                       :: success
+        class(ovf_file)                     :: self
+        type(ovf_segment), intent(in)       :: segment
+        real(kind=8), allocatable, target   :: array(:,:)
+        integer, optional, intent(in)       :: fileformat_in
+        integer                             :: success
 
-        integer                       :: fileformat
-        type(c_ovf_segment)           :: c_segment
-        type(c_ptr)                   :: c_segment_ptr
-        type(c_ptr)                   :: c_array_ptr
+        integer                     :: fileformat
+        type(c_ovf_segment), target :: c_segment
+        type(c_ptr)                 :: c_segment_ptr
+        type(c_ptr)                 :: c_array_ptr
 
         interface
             function ovf_write_segment_8(file, segment, array, fileformat) &
@@ -418,16 +418,16 @@ contains
 
     function append_segment_4(self, segment, array, fileformat_in) result(success)
         implicit none
-        class(ovf_file)               :: self
-        type(ovf_segment), intent(in) :: segment
-        real(kind=4), allocatable     :: array(:,:)
-        integer, optional, intent(in) :: fileformat_in
-        integer                       :: success
+        class(ovf_file)                     :: self
+        type(ovf_segment), intent(in)       :: segment
+        real(kind=4), allocatable, target   :: array(:,:)
+        integer, optional, intent(in)       :: fileformat_in
+        integer                             :: success
 
-        integer                       :: fileformat
-        type(c_ovf_segment)           :: c_segment
-        type(c_ptr)                   :: c_segment_ptr
-        type(c_ptr)                   :: c_array_ptr
+        integer                     :: fileformat
+        type(c_ovf_segment), target :: c_segment
+        type(c_ptr)                 :: c_segment_ptr
+        type(c_ptr)                 :: c_array_ptr
 
         interface
             function ovf_append_segment_4(file, segment, array, fileformat) &
@@ -466,16 +466,16 @@ contains
 
     function append_segment_8(self, segment, array, fileformat_in) result(success)
         implicit none
-        class(ovf_file)               :: self
-        type(ovf_segment), intent(in) :: segment
-        real(kind=8), allocatable     :: array(:,:)
-        integer, optional, intent(in) :: fileformat_in
-        integer                       :: success
+        class(ovf_file)                     :: self
+        type(ovf_segment), intent(in)       :: segment
+        real(kind=8), allocatable, target   :: array(:,:)
+        integer, optional, intent(in)       :: fileformat_in
+        integer                             :: success
 
-        integer                       :: fileformat
-        type(c_ovf_segment)           :: c_segment
-        type(c_ptr)                   :: c_segment_ptr
-        type(c_ptr)                   :: c_array_ptr
+        integer                     :: fileformat
+        type(c_ovf_segment), target :: c_segment
+        type(c_ptr)                 :: c_segment_ptr
+        type(c_ptr)                 :: c_array_ptr
 
         interface
             function ovf_append_segment_8(file, segment, array, fileformat) &
