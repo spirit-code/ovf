@@ -17,14 +17,13 @@ Filter_File_Handle::Filter_File_Handle( const std::string& filename,
     this->dump = "";
     this->line = "";
     this->found = std::string::npos;
-    this->myfile = std::unique_ptr<std::ifstream>( new std::ifstream( filename,
-                                                    std::ios::in | std::ios::binary ) );
+    this->myfile = std::ifstream( filename, std::ios::in | std::ios::binary );
     
     // find begging and end positions of the file stream indicator
-    this->position_file_beg = this->myfile->tellg();
-    this->myfile->seekg( 0, std::ios::end );
-    this->position_file_end = this->myfile->tellg();
-    this->myfile->seekg( 0, std::ios::beg );
+    this->position_file_beg = this->myfile.tellg();
+    this->myfile.seekg( 0, std::ios::end );
+    this->position_file_end = this->myfile.tellg();
+    this->myfile.seekg( 0, std::ios::beg );
     
     // set limits of the file stream indicator to begging and end positions (eq. ResetLimits())
     this->position_start = this->position_file_beg;
@@ -35,19 +34,19 @@ Filter_File_Handle::Filter_File_Handle( const std::string& filename,
     this->n_comment_lines = 0;
 
     // if the file is not open
-    // if ( !this->myfile->is_open() )
+    // if ( !this->myfile.is_open() )
     // spirit_throw(Exception_Classifier::File_not_Found, Log_Level::Error, fmt::format("Could not open file \"{}\"", filename));
 }
 
 Filter_File_Handle::~Filter_File_Handle()
 { 
-    myfile->close();
+    myfile.close();
 }
 
 std::ios::pos_type Filter_File_Handle::GetPosition( std::ios::seekdir dir )
 {
-    this->myfile->seekg( 0, dir );
-    return this->myfile->tellg();
+    this->myfile.seekg( 0, dir );
+    return this->myfile.tellg();
 }
 
 void Filter_File_Handle::SetLimits( const std::ios::pos_type start, 
@@ -68,7 +67,7 @@ bool Filter_File_Handle::GetLine_Handle( const std::string str_to_remove )
     this->line = "";
     
     //	if there is a next line
-    if ( (bool) getline( *this->myfile, this->line ) )
+    if ( (bool) getline( this->myfile, this->line ) )
     {
         this->n_lines++;
 
@@ -107,15 +106,15 @@ bool Filter_File_Handle::GetLine( const std::string str_to_remove )
 
 void Filter_File_Handle::ResetStream()
 {
-    myfile->clear();
-    myfile->seekg(0, std::ios::beg);
+    myfile.clear();
+    myfile.seekg(0, std::ios::beg);
 }
 
 bool Filter_File_Handle::Find(const std::string & s)
 {
-    myfile->clear();
-    //myfile->seekg( this->position_file_beg, std::ios::beg);
-    myfile->seekg( this->position_start );
+    myfile.clear();
+    //myfile.seekg( this->position_file_beg, std::ios::beg);
+    myfile.seekg( this->position_start );
 
     while ( GetLine() && ( GetPosition() <= this->position_stop ) ) 
     {
@@ -193,7 +192,7 @@ int Filter_File_Handle::Count_Words( const std::string& phrase )
     this->dump = "";
     int words = 0;
     while( phrase_stream >> dump ) ++words;
-    return words; 
+    return words;
 }
 
 int Filter_File_Handle::Get_N_Non_Comment_Lines()
