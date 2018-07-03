@@ -57,6 +57,12 @@ contains
     procedure :: read_segment_data_4
     procedure :: read_segment_data_8
     GENERIC   :: read_segment_data   => read_segment_data_4, read_segment_data_8
+    procedure :: write_segment_4
+    procedure :: write_segment_8
+    GENERIC   :: write_segment       => write_segment_4, write_segment_8
+    procedure :: append_segment_4
+    procedure :: append_segment_8
+    GENERIC   :: append_segment      => append_segment_4, append_segment_8
     procedure :: close_file          => close_file
 end type ovf_file
 
@@ -314,6 +320,198 @@ contains
     end function read_segment_data_8
 
 
+    function write_segment_4(self, segment, array, fileformat_in) result(success)
+        implicit none
+        class(ovf_file)               :: self
+        type(ovf_segment), intent(in) :: segment
+        real(kind=4), allocatable     :: array(:,:)
+        integer, optional, intent(in) :: fileformat_in
+        integer                       :: success
+
+        integer                       :: fileformat
+        type(c_ovf_segment)           :: c_segment
+        type(c_ptr)                   :: c_segment_ptr
+        type(c_ptr)                   :: c_array_ptr
+
+        interface
+            function ovf_write_segment_4(file, segment, array, fileformat) &
+                                            bind ( C, name = "ovf_write_segment_4" ) &
+                                            result(success)
+            use, intrinsic :: iso_c_binding
+            Import :: c_ovf_file, c_ovf_segment
+                type(c_ptr), value          :: file
+                type(c_ptr), value          :: segment
+                type(c_ptr), value          :: array
+                integer(kind=c_int), value  :: fileformat
+                integer(kind=c_int)         :: success
+            end function ovf_write_segment_4
+        end interface
+
+        if( present(fileformat_in) ) then
+            fileformat = fileformat_in
+        else
+            fileformat = OVF_FORMAT_BIN
+        end if
+
+        ! Parse into C-structure
+        c_segment = get_c_ovf_segment(segment)
+
+        ! Get C-pointers to C-structures
+        c_segment_ptr = c_loc(c_segment)
+        c_array_ptr   = c_loc(array(1,1))
+
+        ! Call the C-API
+        success = ovf_write_segment_4(self%private_file_binding, c_segment_ptr, c_array_ptr, fileformat)
+
+        call handle_messages(self)
+
+    end function write_segment_4
+
+
+    function write_segment_8(self, segment, array, fileformat_in) result(success)
+        implicit none
+        class(ovf_file)               :: self
+        type(ovf_segment), intent(in) :: segment
+        real(kind=8), allocatable     :: array(:,:)
+        integer, optional, intent(in) :: fileformat_in
+        integer                       :: success
+
+        integer                       :: fileformat
+        type(c_ovf_segment)           :: c_segment
+        type(c_ptr)                   :: c_segment_ptr
+        type(c_ptr)                   :: c_array_ptr
+
+        interface
+            function ovf_write_segment_8(file, segment, array, fileformat) &
+                                            bind ( C, name = "ovf_write_segment_8" ) &
+                                            result(success)
+            use, intrinsic :: iso_c_binding
+            Import :: c_ovf_file, c_ovf_segment
+                type(c_ptr), value          :: file
+                type(c_ptr), value          :: segment
+                type(c_ptr), value          :: array
+                integer(kind=c_int), value  :: fileformat
+                integer(kind=c_int)         :: success
+            end function ovf_write_segment_8
+        end interface
+
+        if( present(fileformat_in) ) then
+            fileformat = fileformat_in
+        else
+            fileformat = OVF_FORMAT_BIN
+        end if
+
+        ! Parse into C-structure
+        c_segment = get_c_ovf_segment(segment)
+
+        ! Get C-pointers to C-structures
+        c_segment_ptr = c_loc(c_segment)
+        c_array_ptr   = c_loc(array(1,1))
+
+        ! Call the C-API
+        success = ovf_write_segment_8(self%private_file_binding, c_segment_ptr, c_array_ptr, fileformat)
+
+        call handle_messages(self)
+
+    end function write_segment_8
+
+
+    function append_segment_4(self, segment, array, fileformat_in) result(success)
+        implicit none
+        class(ovf_file)               :: self
+        type(ovf_segment), intent(in) :: segment
+        real(kind=4), allocatable     :: array(:,:)
+        integer, optional, intent(in) :: fileformat_in
+        integer                       :: success
+
+        integer                       :: fileformat
+        type(c_ovf_segment)           :: c_segment
+        type(c_ptr)                   :: c_segment_ptr
+        type(c_ptr)                   :: c_array_ptr
+
+        interface
+            function ovf_append_segment_4(file, segment, array, fileformat) &
+                                            bind ( C, name = "ovf_append_segment_4" ) &
+                                            result(success)
+            use, intrinsic :: iso_c_binding
+            Import :: c_ovf_file, c_ovf_segment
+                type(c_ptr), value          :: file
+                type(c_ptr), value          :: segment
+                type(c_ptr), value          :: array
+                integer(kind=c_int), value  :: fileformat
+                integer(kind=c_int)         :: success
+            end function ovf_append_segment_4
+        end interface
+
+        if( present(fileformat_in) ) then
+            fileformat = fileformat_in
+        else
+            fileformat = OVF_FORMAT_BIN
+        end if
+
+        ! Parse into C-structure
+        c_segment = get_c_ovf_segment(segment)
+
+        ! Get C-pointers to C-structures
+        c_segment_ptr = c_loc(c_segment)
+        c_array_ptr   = c_loc(array(1,1))
+
+        ! Call the C-API
+        success = ovf_append_segment_4(self%private_file_binding, c_segment_ptr, c_array_ptr, fileformat)
+
+        call handle_messages(self)
+
+    end function append_segment_4
+
+
+    function append_segment_8(self, segment, array, fileformat_in) result(success)
+        implicit none
+        class(ovf_file)               :: self
+        type(ovf_segment), intent(in) :: segment
+        real(kind=8), allocatable     :: array(:,:)
+        integer, optional, intent(in) :: fileformat_in
+        integer                       :: success
+
+        integer                       :: fileformat
+        type(c_ovf_segment)           :: c_segment
+        type(c_ptr)                   :: c_segment_ptr
+        type(c_ptr)                   :: c_array_ptr
+
+        interface
+            function ovf_append_segment_8(file, segment, array, fileformat) &
+                                            bind ( C, name = "ovf_append_segment_8" ) &
+                                            result(success)
+            use, intrinsic :: iso_c_binding
+            Import :: c_ovf_file, c_ovf_segment
+                type(c_ptr), value          :: file
+                type(c_ptr), value          :: segment
+                type(c_ptr), value          :: array
+                integer(kind=c_int), value  :: fileformat
+                integer(kind=c_int)         :: success
+            end function ovf_append_segment_8
+        end interface
+
+        if( present(fileformat_in) ) then
+            fileformat = fileformat_in
+        else
+            fileformat = OVF_FORMAT_BIN
+        end if
+
+        ! Parse into C-structure
+        c_segment = get_c_ovf_segment(segment)
+
+        ! Get C-pointers to C-structures
+        c_segment_ptr = c_loc(c_segment)
+        c_array_ptr   = c_loc(array(1,1))
+
+        ! Call the C-API
+        success = ovf_append_segment_8(self%private_file_binding, c_segment_ptr, c_array_ptr, fileformat)
+
+        call handle_messages(self)
+
+    end function append_segment_8
+
+
     function close_file(self) result(success)
         implicit none
         class(ovf_file) :: self
@@ -337,134 +535,3 @@ contains
 
 
 end module ovf
-
-
-! program main
-! use, intrinsic :: iso_c_binding
-! use ovf
-!     implicit none
-!     type(c_ptr)                       :: c_file, c_segment
-!     type(ovf_file), pointer           :: fortran_handle
-!     type(ovf_segment)                 :: f_segment
-!     integer(kind=c_int)               :: success
-!     integer                           :: size
-!     real(kind=4), allocatable, target :: array_4(:,:)
-!     real(kind=8), allocatable, target :: array_8(:,:)
-!     character(len=:), allocatable     :: test_str
-
-
-!     interface
-!         function ovf_write_segment_4(file, segment, array, fileformat) &
-!                                     bind ( C, name = "ovf_write_segment_4" ) &
-!                                     result(success)
-!         use, intrinsic :: iso_c_binding
-!         use ovf
-!             type(c_ptr), value              :: file
-!             type(c_ovf_segment)               :: segment
-!             type(c_ptr), value              :: array
-!             integer(kind=c_int), value      :: fileformat
-!             integer(kind=c_int)             :: success
-!         end function ovf_write_segment_4
-!     end interface
-
-!     interface
-!         function ovf_write_segment_8(file, segment, array, fileformat) &
-!                                     bind ( C, name = "ovf_write_segment_8" ) &
-!                                     result(success)
-!         use, intrinsic :: iso_c_binding
-!         use ovf
-!             type(c_ptr), value              :: file
-!             type(c_ovf_segment)               :: segment
-!             type(c_ptr), value              :: array
-!             integer(kind=c_int), value      :: fileformat
-!             integer(kind=c_int)             :: success
-!         end function ovf_write_segment_8
-!     end interface
-
-!     interface
-!         function ovf_append_segment_4(file, segment, array, fileformat) &
-!                                     bind ( C, name = "ovf_append_segment_4" ) &
-!                                     result(success)
-!         use, intrinsic :: iso_c_binding
-!         use ovf
-!             type(c_ptr), value              :: file
-!             type(c_ovf_segment)               :: segment
-!             type(c_ptr), value              :: array
-!             integer(kind=c_int), value      :: fileformat
-!             integer(kind=c_int)             :: success
-!         end function ovf_append_segment_4
-!     end interface
-
-!     interface
-!         function ovf_append_segment_8(file, segment, array, fileformat) &
-!                                     bind ( C, name = "ovf_append_segment_8" ) &
-!                                     result(success)
-!         use, intrinsic :: iso_c_binding
-!         use ovf
-!             type(c_ptr), value              :: file
-!             type(c_ovf_segment)               :: segment
-!             type(c_ptr), value              :: array
-!             integer(kind=c_int), value      :: fileformat
-!             integer(kind=c_int)             :: success
-!         end function ovf_append_segment_8
-!     end interface
-
-
-!     write (*,*) "Running"
-
-!     !---------------------
-
-!     ! c_file = ovf_open(C_CHAR_"python/test/testfile_out.ovf"//C_NULL_CHAR)
-!     ! write (*,"(A, Z20)") "Fortran pointer = ", c_file
-
-!     ! call C_F_POINTER(c_file, fortran_handle)
-!     ! write (*,*) "n_segments = ", fortran_handle%n_segments
-
-!     ! !---------------------
-
-!     ! if (ovf_read_segment_header(c_file, 1, f_segment) == -1) then
-!     !     write (*,*) "n_cells =    ", f_segment%n_cells
-!     !     write (*,*) "n_total =    ", product(f_segment%n_cells)
-
-!     !     test_str = get_string(f_segment%valueunits)
-!     !     write (*,*) "test_str =   ", test_str
-!     ! else
-!     !     write (*,*) "something did not work with ovf_read_segment_header"
-!     ! end if
-
-!     ! !---------------------
-
-!     ! size = product(f_segment%n_cells)
-!     ! allocate(array_4(3,size))
-!     ! allocate(array_8(3,size))
-
-!     ! !---------------------
-
-!     ! success = ovf_close(c_file)
-
-!     ! !---------------------
-
-!     ! c_file = ovf_open(C_CHAR_"python/test/testfile_f_out.ovf"//C_NULL_CHAR)
-
-!     ! array_4(:,1) = 4
-!     ! array_8(:,1) = 8
-
-!     ! if (ovf_write_segment_4(c_file, f_segment, c_loc(array_4(1,1)), OVF_FORMAT_BIN) == -1) then
-!     !     write (*,*) "array_4(:,1) = ", array_4(:,1)
-!     ! else
-!     !     write (*,*) "something did not work with ovf_write_segment_4"
-!     ! end if
-
-!     ! if (ovf_append_segment_8(c_file, f_segment, c_loc(array_8(1,1)), OVF_FORMAT_CSV) == -1) then
-!     !     write (*,*) "array_8(:,1) = ", array_8(:,1)
-!     ! else
-!     !     write (*,*) "something did not work with ovf_append_segment_8"
-!     ! end if
-
-!     ! !---------------------
-
-!     ! success = ovf_close(c_file)
-
-! end program main
-
-
