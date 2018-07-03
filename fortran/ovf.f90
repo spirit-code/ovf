@@ -39,7 +39,7 @@ type, bind(c) :: c_ovf_segment
     real(kind=c_float)  :: bravais_vectors(3,3)
 end type c_ovf_segment
 
-type :: ovf_segment 
+type :: ovf_segment
     character(len=:), allocatable :: Title, ValueUnits, ValueLabels,  MeshType, MeshUnits
     integer                       :: ValueDim, PointCount, N_Cells(3), N 
     real(8)                       :: bounds_min(3), bounds_max(3), lattice_constant, bravais_vectors(3,3)
@@ -49,6 +49,7 @@ type :: ovf_file
     character(len=:), allocatable   :: filename
     logical                         :: found, is_ovf
     integer                         :: n_segments
+    character(len=:), allocatable   :: latest_message
     type(c_ptr)                     :: private_file_binding
 contains
     procedure :: open_file           => open_file
@@ -74,12 +75,12 @@ contains
         interface
             function c_strlen(str_ptr) bind ( C, name = "strlen" ) result(len)
             use, intrinsic :: iso_c_binding
-                type(c_ptr), value              :: str_ptr
-                integer(kind=c_size_t)          :: len
+                type(c_ptr), value      :: str_ptr
+                integer(kind=c_size_t)  :: len
             end function c_strlen
         end interface
 
-        call c_f_pointer(c_pointer, f_ptr )
+        call c_f_pointer(c_pointer, f_ptr)
         l_str = c_strlen(c_pointer)
 
         f_string = f_ptr(1:l_str)
@@ -116,6 +117,29 @@ contains
         segment%N_Cells(:) = c_segment%n_cells(:)
         segment%N          = product(c_segment%n_cells)
     end subroutine fill_ovf_segment
+
+
+    ! Helper function to get latest message
+    subroutine handle_messages(file)
+        implicit none
+
+        class(ovf_file) :: file
+        type(c_ptr)     :: message_ptr
+
+        interface
+            function ovf_latest_message(file) &
+                            bind ( C, name = "ovf_latest_message" ) &
+                            result(message)
+            use, intrinsic :: iso_c_binding
+                type(c_ptr), value  :: file
+                type(c_ptr)         :: message
+            end function ovf_latest_message
+        end interface
+
+        message_ptr = ovf_latest_message(file%private_file_binding)
+        file%latest_message = get_string(message_ptr)
+
+    end subroutine handle_messages
 
 
     subroutine open_file(self, filename)
@@ -175,6 +199,8 @@ contains
             call fill_ovf_segment(c_segment, segment)
         end if
 
+        call handle_messages(self)
+
     end function read_segment_header
 
 
@@ -227,6 +253,8 @@ contains
 
         ! Call the C-API
         success = ovf_read_segment_data_4(self%private_file_binding, index-1, c_segment_ptr, c_array_ptr)
+
+        call handle_messages(self)
 
     end function read_segment_data_4
 
@@ -281,6 +309,8 @@ contains
         ! Call the C-API
         success = ovf_read_segment_data_8(self%private_file_binding, index-1, c_segment_ptr, c_array_ptr)
 
+        call handle_messages(self)
+
     end function read_segment_data_8
 
 
@@ -300,6 +330,8 @@ contains
         end interface
 
         success = ovf_close(self%private_file_binding)
+
+        call handle_messages(self)
 
     end function close_file
 
@@ -405,28 +437,6 @@ end module ovf
 !     ! size = product(f_segment%n_cells)
 !     ! allocate(array_4(3,size))
 !     ! allocate(array_8(3,size))
-
-!     ! !---------------------
-
-!     ! if (ovf_read_segment_data_4(c_file, 0, f_segment, c_loc(array_4(1,1))) == -1) then
-!     !     write (*,*) "array_4(:,2) = ", array_4(:,2)
-!     ! else
-!     !     write (*,*) "something did not work with ovf_read_segment_data_4"
-!     ! end if
-
-!     ! if (ovf_read_segment_data_8(c_file, 0, f_segment, c_loc(array_8(1,1))) == -1) then
-!     !     write (*,*) "array_8(:,2) = ", array_8(:,2)
-!     ! else
-!     !     write (*,*) "something did not work with ovf_read_segment_data_8"
-!     ! end if
-
-!     ! !---------------------
-
-!     ! if (ovf_read_segment_data_4(c_file, 1, f_segment, c_loc(array_4(1,1))) == -1) then
-!     !     write (*,*) "array_4(:,2) = ", array_4(:,2)
-!     ! else
-!     !     write (*,*) "something did not work with ovf_read_segment_data_4"
-!     ! end if
 
 !     ! !---------------------
 

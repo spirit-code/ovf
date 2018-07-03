@@ -17,7 +17,7 @@ use ovf
         write (*,*) "n_cells = ", segment%N_Cells
         write (*,*) "n_total = ", segment%N
     else
-        write (*,*) "test read_segment_header did not work"
+        write (*,*) "test read_segment_header did not work. Message: ", file%latest_message
         STOP 1
     endif
 
@@ -29,7 +29,7 @@ use ovf
     if ( success == OVF_OK) then
         write (*,*) "array_4(:,2) = ", array_4(:,2)
     else
-        write (*,*) "test read_segment_data on array_4 did not work"
+        write (*,*) "test read_segment_data on array_4 did not work. Message: ", file%latest_message
         STOP 1
     endif
 
@@ -37,7 +37,7 @@ use ovf
     if ( success == OVF_OK) then
         write (*,*) "array_8(:,2) = ", array_8(:,2)
     else
-        write (*,*) "test read_segment_data on array_8 did not work"
+        write (*,*) "test read_segment_data on array_8 did not work. Message: ", file%latest_message
         STOP 1
     endif
 
@@ -45,7 +45,7 @@ use ovf
     if ( success == OVF_OK) then
         write (*,*) "test file closed"
     else
-        write (*,*) "test close_file did not work"
+        write (*,*) "test close_file did not work. Message: ", file%latest_message
         STOP 1
     endif
 
