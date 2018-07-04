@@ -36,8 +36,8 @@ use ovf
 
     allocate( array_4(3, segment%N) )
     array_4 = 0
-    array_4(:,1) = (/ 6.0, 7.0, 8.0 /)
-    array_4(:,2) = (/ 5.0, 4.0, 3.0 /)
+    array_4(:,1) = [ 6.0, 7.0, 8.0 ]
+    array_4(:,2) = [ 5.0, 4.0, 3.0 ]
 
     success = file%write_segment(segment, array_4, OVF_FORMAT_TEXT)
     if ( success == OVF_OK) then
