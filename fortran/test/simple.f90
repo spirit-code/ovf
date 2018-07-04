@@ -31,7 +31,7 @@ use ovf
 
     ! Write a file
     call file%open_file("fortran/test/testfile_f.ovf")
-    segment%N_Cells = (/ 2, 2, 1 /)
+    segment%N_Cells = [2, 2, 1]
     segment%N = product(segment%N_Cells)
 
     allocate( array_4(3, segment%N) )
