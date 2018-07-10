@@ -32,6 +32,8 @@
 /* all header info on a segment */
 struct ovf_segment {
     char *title;
+    char *comment;
+
     int valuedim;
     char *valueunits;
     char *valuelabels;
@@ -72,6 +74,9 @@ struct ovf_file {
 
 /* opening a file will fill the struct and prepare everything for read/write */
 DLLEXPORT struct ovf_file * ovf_open(const char *filename);
+
+/* create a default-initialized segment struct */
+DLLEXPORT struct ovf_segment * ovf_segment_initialize();
 
 /* read the geometry info from a segment header */
 DLLEXPORT int ovf_read_segment_header(struct ovf_file *, int index, struct ovf_segment *);

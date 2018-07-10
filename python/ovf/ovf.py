@@ -21,6 +21,7 @@ class ovf_segment(ctypes.Structure):
     ### Some properties
     _fields_ = [
         ("title",            ctypes.c_char_p),
+        ("comment",          ctypes.c_char_p),
         ("valuedim",         ctypes.c_int),
         ("valueunits",       ctypes.c_char_p),
         ("valuelabels",      ctypes.c_char_p),

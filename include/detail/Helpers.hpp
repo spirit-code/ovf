@@ -93,8 +93,10 @@ try
     // Read the header
     std::string title = "";
     ifile->Read_String( title, "# Title:" );
-    std::string meshunit = "";
-    ifile->Read_Single( meshunit, "# meshunit:" );
+    std::string comment = "";
+    ifile->Read_String( comment, "# Desc:" );
+    std::string meshunits = "";
+    ifile->Read_Single( meshunits, "# meshunit:" );
 
     ifile->Require_Single( segment->valuedim, "# valuedim:" );
 
@@ -125,6 +127,7 @@ try
     ifile->Require_Single( segment->n_cells[0], "# xnodes:" );
     ifile->Require_Single( segment->n_cells[1], "# ynodes:" );
     ifile->Require_Single( segment->n_cells[2], "# znodes:" );
+    segment->N = segment->n_cells[0] * segment->n_cells[1] * segment->n_cells[2];
 
     // Check mesh type
     if( meshtype == "irregular" )
@@ -135,10 +138,21 @@ try
     // Convert strings to char *
     segment->title = new char[title.length() + 1];
     strcpy(segment->title, title.c_str());
-    segment->meshunits = new char[meshunit.length() + 1];
-    strcpy(segment->meshunits, meshunit.c_str());
+
+    segment->comment = new char[comment.length() + 1];
+    strcpy(segment->comment, comment.c_str());
+
     segment->valueunits = new char[valueunits.length() + 1];
     strcpy(segment->valueunits, valueunits.c_str());
+
+    segment->valuelabels = new char[valuelabels.length() + 1];
+    strcpy(segment->valuelabels, valuelabels.c_str());
+
+    segment->meshtype = new char[meshtype.length() + 1];
+    strcpy(segment->meshtype, meshtype.c_str());
+
+    segment->meshunits = new char[meshunits.length() + 1];
+    strcpy(segment->meshunits, meshunits.c_str());
 
     return OVF_OK;
 }
@@ -189,7 +203,8 @@ try
     }
     else
     {
-        file->_file_handle->message_latest = fmt::format("read_segment failed for file \"{}\". Invalid data format {}", file->filename, datatype);
+        file->_file_handle->message_latest = fmt::format(
+            "read_segment failed for file \"{}\". Invalid data format {}", file->filename, datatype );
         return OVF_ERROR;
     }
 
@@ -491,8 +506,7 @@ catch( ... )
 
 template <typename T>
 int write_segment( ovf_file *file, const ovf_segment * segment, const T * vf,
-                    const std::string comment, bool write_header,
-                    const bool append = false, int format = OVF_FORMAT_BIN8 )
+                    bool write_header, const bool append = false, int format = OVF_FORMAT_BIN8 )
 try
 {
     std::string output_to_file;
@@ -511,18 +525,16 @@ try
     output_to_file += fmt::format( "# Begin: Header\n" );
     output_to_file += fmt::format( empty_line );
 
-    output_to_file += fmt::format( "# Title:\n");
+    output_to_file += fmt::format( "# Title: {}\n", segment->title );
     output_to_file += fmt::format( empty_line );
 
-    output_to_file += fmt::format( "# Desc: {}\n", comment );
+    output_to_file += fmt::format( "# Desc: {}\n", segment->comment );
     output_to_file += fmt::format( empty_line );
 
     // The value dimension is always 3 since we are writting Vector3-data
-    output_to_file += fmt::format( "# valuedim: {} ##Value dimension\n", 3 ); // segment->valuedim );
+    output_to_file += fmt::format( "# valuedim: {}   ## field dimensionality\n", segment->valuedim );
     output_to_file += fmt::format( "# valueunits: None None None\n" );
-    output_to_file +=
-        fmt::format("# valuelabels: spin_x_component spin_y_component "
-                    "spin_z_component \n");
+    output_to_file += fmt::format( "# valuelabels: spin_x_component spin_y_component spin_z_component \n");
     output_to_file += fmt::format( empty_line );
 
     output_to_file += fmt::format( "## Fundamental mesh measurement unit. "
@@ -617,9 +629,13 @@ try
     // Increment the n_segments after succesfully appending the segment body to the file
     return increment_n_segments(file);
 }
+catch( const std::exception & ex )
+{
+    file->_file_handle->message_latest = fmt::format("Caught std::exception \"{}\"", ex.what());
+    return OVF_ERROR;
+}
 catch( ... )
 {
-    // file->_file_handle->message_latest = fmt::format("write_segment failed for file \"{}\".", file->filename);
     return OVF_ERROR;
 }
 

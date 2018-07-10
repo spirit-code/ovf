@@ -7,6 +7,8 @@ use ovf
     real(kind=4), allocatable :: array_4(:,:)
     real(kind=8), allocatable :: array_8(:,:)
 
+    ! Initialize segment
+    call segment%initialize()
 
     ! Nonexistent file
     call file%open_file("nonexistent.ovf")
@@ -31,13 +33,13 @@ use ovf
 
     ! Write a file
     call file%open_file("fortran/test/testfile_f.ovf")
-    segment%N_Cells = (/ 2, 2, 1 /)
+    segment%N_Cells = [ 2, 2, 1 ]
     segment%N = product(segment%N_Cells)
 
     allocate( array_4(3, segment%N) )
     array_4 = 0
-    array_4(:,1) = (/ 6.0, 7.0, 8.0 /)
-    array_4(:,2) = (/ 5.0, 4.0, 3.0 /)
+    array_4(:,1) = [ 6.0, 7.0, 8.0 ]
+    array_4(:,2) = [ 5.0, 4.0, 3.0 ]
 
     success = file%write_segment(segment, array_4, OVF_FORMAT_TEXT)
     if ( success == OVF_OK) then
