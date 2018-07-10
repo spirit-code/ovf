@@ -5,7 +5,17 @@ import numpy as np
 ### Load Library
 _ovf = ovflib.LoadOVFLibrary()
 
+### Return codes
+OK      = -1
+ERROR   = -2
+INVALID = -3
 
+### File formats
+FILEFORMAT_BIN  = -53
+FILEFORMAT_BIN4 = -54
+FILEFORMAT_BIN8 = -55
+FILEFORMAT_TEXT = -56
+FILEFORMAT_CSV  = -57
 
 class ovf_segment(ctypes.Structure):
     ### Some properties

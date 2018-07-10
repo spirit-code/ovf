@@ -23,9 +23,9 @@ class TestState(unittest.TestCase):
             print("n_segments: ", ovf_file.n_segments)
             segment = ovf.ovf_segment()
             success = ovf_file.read_segment_header(0, segment)
-            if success != -1:
+            if success != ovf.OK:
                 print("read_segment_header failed: ", ovf_file.get_latest_message())
-            self.assertFalse( success == -1 )
+            self.assertFalse( success == ovf.OK )
         print("----- ovf test nonexistent done")
 
     def test_write(self):
@@ -35,14 +35,14 @@ class TestState(unittest.TestCase):
             data[0,1,0,:] = [3.0, 2.0, 1.0]
             segment = ovf.ovf_segment(n_cells=[2,2,1])
             success = ovf_file.write_segment(segment, data)
-            if success != -1:
+            if success != ovf.OK:
                 print("write_segment failed: ", ovf_file.get_latest_message())
-            self.assertTrue( success == -1 )
+            self.assertTrue( success == ovf.OK )
             data[0,1,0,:] = [4.0, 5.0, 6.0]
             success = ovf_file.append_segment(segment, data)
-            if success != -1:
+            if success != ovf.OK:
                 print("append_segment failed: ", ovf_file.get_latest_message())
-            self.assertTrue( success == -1 )
+            self.assertTrue( success == ovf.OK )
         print("----- ovf test writing done")
 
         print("----- ovf test reading")
@@ -52,22 +52,22 @@ class TestState(unittest.TestCase):
             print("n_segments: ", ovf_file.n_segments)
             segment = ovf.ovf_segment()
             success = ovf_file.read_segment_header(0, segment)
-            if success != -1:
+            if success != ovf.OK:
                 print("read_segment_header failed: ", ovf_file.get_latest_message())
             data_shape = (segment.n_cells[0], segment.n_cells[1], segment.n_cells[2], 3)
             print("data shape: ", data_shape)
-            self.assertTrue( success == -1 )
+            self.assertTrue( success == ovf.OK )
             data = np.zeros(data_shape, dtype='f')
             success = ovf_file.read_segment_data(0, segment, data)
-            if success != -1:
+            if success != ovf.OK:
                 print("read_segment_data failed: ", ovf_file.get_latest_message())
             print("first segment:  ", data[0,1,0,:])
-            self.assertTrue( success == -1 )
+            self.assertTrue( success == ovf.OK )
             success = ovf_file.read_segment_data(1, segment, data)
-            if success != -1:
+            if success != ovf.OK:
                 print("read_segment_data failed: ", ovf_file.get_latest_message())
             print("second segment: ", data[0,1,0,:])
-            self.assertTrue( success == -1 )
+            self.assertTrue( success == ovf.OK )
         print("----- ovf test reading done")
 
 #########
