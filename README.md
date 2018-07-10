@@ -143,9 +143,8 @@ link it with bindings into a corresponding Fortran executable, using gcc.
 C library:
 ```
 g++ -DFMT_HEADER_ONLY -Iinclude -fPIC -std=c++11 -c src/ovf.cpp
-g++ -DFMT_HEADER_ONLY -Iinclude -fPIC -std=c++11 -c src/detail/Filter_File_Handle.cpp
 
-ar qc libovf_static.a  ovf.o Filter_File_Handle.o
+ar qc libovf_static.a  ovf.o
 ranlib libovf_static.a
 ```
 

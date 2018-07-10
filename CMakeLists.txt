@@ -16,14 +16,13 @@ project(${META_PROJECT_NAME} VERSION ${META_VERSION})
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+#############################################
 option( OVF_BUILD_PYTHON_BINDINGS  "Build the shared library for Python."  ON )
 option( OVF_BUILD_FORTRAN_BINDINGS "Build the module file for Fortran."    ON )
 option( OVF_BUILD_TEST             "Build unit tests for the ovf library." ON )
+#############################################
 
-set(SOURCE_FILES
-    src/ovf.cpp
-    src/detail/Filter_File_Handle.cpp
-)
+set(SOURCE_FILES src/ovf.cpp)
 
 set(HEADER_FILES
     src/ovf.h

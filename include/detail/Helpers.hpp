@@ -40,7 +40,7 @@ static const int n_segments_str_digits = 6; // can store 1M modes
 
 
 // Count the number of segments in the file. It also saves their file positions
-static int count_and_locate_segments(ovf_file * file)
+inline int count_and_locate_segments(ovf_file * file)
 try
 {
     file->_file_handle->segment_fpos = std::vector<std::ios::pos_type>(0);
@@ -81,8 +81,7 @@ catch( ... )
 
 
 // Read segment's header into member variables
-static int read_segment_header( ovf_file * file,
-    int idx_seg, ovf_segment * segment )
+inline int read_segment_header( ovf_file * file, int idx_seg, ovf_segment * segment )
 try
 {
     // open the file
@@ -311,7 +310,7 @@ catch (...)
 
 
 // TODO: use Filter_File_Handle instead...
-static void Strings_to_File(const std::vector<std::string> text, const std::string name, int no=-1)
+inline void Strings_to_File(const std::vector<std::string> text, const std::string name, int no=-1)
 {
     std::ofstream myfile;
     myfile.open(name);
@@ -332,7 +331,7 @@ static void Strings_to_File(const std::vector<std::string> text, const std::stri
     }
 }
 
-static void Append_String_to_File(const std::string text, const std::string name)
+inline void Append_String_to_File(const std::string text, const std::string name)
 {
     std::ofstream myfile;
     myfile.open(name, std::ofstream::out | std::ofstream::app);
@@ -349,7 +348,7 @@ static void Append_String_to_File(const std::string text, const std::string name
     }
 }
 
-static std::string top_header_string()
+inline std::string top_header_string()
 {
     std::string ret = "# OOMMF OVF 2.0\n";
     ret += empty_line;
@@ -362,7 +361,7 @@ static std::string top_header_string()
     return ret;
 }
 
-static int increment_n_segments(ovf_file *file)
+inline int increment_n_segments(ovf_file *file)
 try
 {
     std::fstream filestream( file->filename ); 
