@@ -9,17 +9,37 @@ How to use
 
 For usage examples, take a look into the test folders: [test](https://github.com/spirit-code/ovf/tree/master/test), [python/test](https://github.com/spirit-code/ovf/tree/master/python/test) or [fortran/test](https://github.com/spirit-code/ovf/tree/master/fortran/test).
 
-Except for opening a file, all functions return status codes (generally `OVF_OK` or `OVF_ERROR`).
-When the return code is not `OVF_OK`, you can take a look into the latest message, which should
-tell you what the problem was (`const char * ovf_latest_message(struct ovf_file *)` in the C API).
+Except for opening a file or initializing a segment, all functions return status codes
+(generally `OVF_OK` or `OVF_ERROR`). When the return code is not `OVF_OK`, you can take
+a look into the latest message, which should tell you what the problem was
+(`const char * ovf_latest_message(struct ovf_file *)` in the C API).
+
+In C/C++ and Fortran, before writing a segment, make sure the `ovf_segment` you pass in is
+initialized, i.e. you already called either `ovf_read_segment_header` or `ovf_segment_initialize`.
 
 ### C/C++
 
-- `struct ovf_file *myfile = ovf_open("myfilename.ovf");` to open a file
+Opening and closing:
+
+- `struct ovf_file *myfile = ovf_open("myfilename.ovf")` to open a file
 - `myfile->found` to check if the file exists on disk
 - `myfile->is_ovf` to check if the file contains an OVF header
 - `myfile->n_segments` to check the number of segments the file should contain
 - `ovf_close(myfile);` to close the file and free resources
+
+Reading from a file:
+
+- `struct ovf_segment *segment = ovf_segment_initialize()` to initialize a segment and get the pointer
+- `ovf_read_segment_header(myfile, index, segment)` to read the header into the segment struct
+- create float data array of appropriate size...
+- `ovf_read_segment_data_4(myfile, index, segment, data)` to read the segment data into your float array
+
+Writing and appending to a file:
+
+- `struct ovf_segment *segment = ovf_segment_initialize()` to initialize a segment and get the pointer
+- `segment->n_cells[0] = ...` etc to set data dimensions, title and description, etc.
+- `ovf_write_segment_4(myfile, segment, data, OVF_FORMAT_TEXT)` to write a file containing the segment header and data
+- `ovf_append_segment_4(myfile, segment, data, OVF_FORMAT_TEXT)` to append the segment header and data to the file
 
 ### Python
 
@@ -145,24 +165,42 @@ link it with bindings into a corresponding Fortran executable, using gcc.
 
 C library:
 ```
-g++ -DFMT_HEADER_ONLY -Iinclude -fPIC -std=c++11 -c src/ovf.cpp
+g++ -DFMT_HEADER_ONLY -Iinclude -fPIC -std=c++11 -c src/ovf.cpp -o ovf.cpp.o
 
-ar qc libovf_static.a  ovf.o
+# static
+ar qc libovf_static.a ovf.cpp.o
 ranlib libovf_static.a
+
+# shared
+g++ -fPIC -shared -lc++ ovf.cpp.o -o libovf_shared.so
+```
+
+C/C++ test executable:
+```
+g++ -Iinclude -Itest -std=c++11 -c test/main.cpp -o main.cpp.o
+g++ -Iinclude -Itest -std=c++11 -c test/simple.cpp -o simple.cpp.o
+
+# link static lib
+g++ -lc++ libovf_static.a main.cpp.o simple.cpp.o -o test_cpp_simple
+
+# link shared lib
+g++ libovf_shared.so main.cpp.o simple.cpp.o -o test_cpp_simple
 ```
 
 Fortran library:
 ```
 gfortran -fPIC -c fortran/ovf.f90 -o ovf.f90.o
 
-ar qc libovf_fortran.a  ovf.f90.o
+ar qc libovf_fortran.a libovf_static.a ovf.f90.o
 ranlib libovf_fortran.a
 ```
 
-Fortran executable
+Fortran test executable
 ```
 gfortran -c fortran/test/simple.f90 -o simple.f90.o
-gfortran simple.f90.o libovf_fortran.a libovf_static.a -lstdc++ -o test_fortran_simple
+gfortran -lc++ libovf_fortran.a simple.f90.o -o test_fortran_simple
 ```
 
-*Note: on OSX simply replace `-lstdc++` with `-lc++`*
+When linking statically, you can also link the object file `ovf.cpp.o` instead of `libovf_static.a`.
+
+*Note: depending on compiler and/or system, you may need `-lstdc++` instead of `-lc++`.*
