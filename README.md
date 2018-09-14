@@ -2,6 +2,8 @@ OVF Parser Library
 =================================
 **Simple API for powerful OOMMF Vector Field file parsing**<br />
 
+[OVF format specification](https://math.nist.gov/oommf/doc/userguide20a0/userguide/Vector_Field_File_Format_OV.html)
+
 **[Python package](https://pypi.org/project/ovf/):** [![PyPI version](https://badge.fury.io/py/ovf.svg)](https://badge.fury.io/py/ovf)
 
 How to use
@@ -204,3 +206,71 @@ gfortran -lc++ libovf_fortran.a simple.f90.o -o test_fortran_simple
 When linking statically, you can also link the object file `ovf.cpp.o` instead of `libovf_static.a`.
 
 *Note: depending on compiler and/or system, you may need `-lstdc++` instead of `-lc++`.*
+
+
+
+File format specification (Work in Progress!)
+=================================
+
+This library supports the OVF 2.0 format, but provides some extensions to it.
+Extensions this library currently makes are documented below, but are subject to change.
+
+After the header, the file consists of Segment blocks, each composed of a header and a data block.
+
+General
+---------------------------------
+
+- An OVF file has an ASCII header and trailer, and a data block that may be either ASCII or binary.
+- All non-data lines begin with a `#` character
+- Comments start with `##` and are ignored by the parser. A comment continues until the end of the line, there is no line continuation character
+- Lines starting with a `#` but containing only whitespace are ignored
+- *Extension:* lines starting with a `#` but containing an unknown keyword are ignored.
+- All non-empty non-comment lines in the file header are structured as pairs of label and value.
+    - The label tag consists of all characters after the initial `#` up to the first colon (`:`) character. Case is ignored, and all whitespace is removed
+    - The value consists of all characters after the first colon, continuing up to a `##` comment designator or the end of the line.
+- Data ordering is generally with the x index incremented first, then the y index, and the z index last
+
+Header
+---------------------------------
+
+- The first line of an OVF 2.0 file must contain `# OOMMF OVF 2.0`
+- The header should also contain the number of segments, specified as e.g. `# Segment count: 000001`
+- *Extension:* the count is padded to 6 digits with zeros (this is so that segments can be appended and the count incremented without having to re-write the entire file)
+
+Segments
+---------------------------------
+
+**Segment Header**
+
+- Each block begins with a `# Begin: <block type>` line, and ends with a corresponding `# End: <block type>` line
+- Everything inside the `Header` block should be either comments or one of the following file keyword lines. The order of keywords is not specified. *Extension:* all have default values, so none are required unless otherwise stated
+    - `title`: long file name or title
+    - `desc`: description line, use as many as desired
+    - `meshunit`: fundamental mesh spatial unit, treated as a label. The comment marker `##` is not allowed in this label. Example value: `nm`
+    - `valueunits`: should be a N-item (Tcl) list of value units, each treated as an unparsed label. The list should either have a length of valuedim, in which case each element denotes the units for the corresponding dimension index, or else the list should have length one, in which case the single element is applied to all dimension indexes. The comment marker `##` is not allowed in this label. Example: `"kA/m"`
+    - `valuelabels`: This should be a N-item (Tcl) list of value labels, one for each value dimension. The labels identify the quantity in each dimension. For example, in an energy density file, N would be 1, valueunits could be `"J/m3"` , and valuelabels might be `"Exchange energy density"`
+    - `valuedim`: *Extension:* this always specifies the vector dimensionality
+    - `xmin`, `ymin`, `zmin`, `xmax`, `ymax`, `zmax`: six separate lines, specifying the bounding box for the mesh
+    - `boundary`: two (x,y,z) triples specifying the two relevant vertices of a boundary frame. *Extension:* can be used instead of `xmin` etc.
+    - `meshtype`: grid structure; should be either `rectangular` or `irregular`
+    - `pointcount`: number of data sample points/locations per cell (here called node)
+    - `xnodes`, `ynodes`, `znodes`: three separate lines, specifying the number of nodes along each axis (integers). *Extension:* for an irregular grid, the entire grid will be repeated
+    - `xbase`, `ybase`, `zbase`: three (x,y,z) triples, specifying the bravais vectors along which the basis cell is repeated
+    - `xstepsize`, `ystepsize`, `zstepsize`: three separate lines - scale factors for the bravais vectors
+
+Standard OVF specification:
+- `xmin`, `ymin`, `zmin`, `xmax`, `ymax`, `zmax`: six separate lines, specifying the bounding box for the mesh, in units of `meshunit`
+- `boundary`: List of (x,y,z) triples specifying the vertices of a boundary frame. *Extension:* can be used instead of `xmin` etc.
+- `meshtype`: grid structure; should be either `rectangular` or `irregular`. For an irregular grid, `pointcount` should also be specified. rectangular grid files should specify instead `xbase`, `ybase`, `zbase`, `xstepsize`, `ystepsize`, `zstepsize`, and `xnodes`, `ynodes`, `znodes`
+- `pointcount`: number of data sample points/locations, i.e., nodes (integer). For irregular grids only.
+- `xbase`, `ybase`, `zbase`: three separate lines, denoting the position of the first point in the data section, in units of `meshunit`. For rectangular grids only.
+- `xstepsize`, `ystepsize`, `zstepsize`: three separate lines, specifying the distance between adjacent grid points, in units of `meshunit`
+- `xnodes`, `ynodes`, `znodes`: three separate lines, specifying the number of nodes along each axis (integers). For rectangular grids only. *Extension:* also for irregular grids, where it defines the repetitions of the irregular set of points?
+
+**Segment Data**
+
+- The data block start is marked by a line of the form  `# Begin: data <representation>` (and therefore closed by `# End: data <representation>`), where `<representation>` is one of `text`, `binary 4`, or `binary 8`
+- *Extension:* `csv` is also a valid representation and corresponds to comma-separated columns of `text` type
+- The binary representations are IEEE floating point in little endian (LSB) order. To ensure that the byte order is correct, and to provide a partial check that the file hasn't been sent through a non 8-bit clean channel, the first data value is fixed to `1234567.0` for 4-byte mode, corresponding to the LSB hex byte sequence `38 B4 96 49`, and `123456789012345.0` for 8-byte mode, corresponding to the LSB hex byte sequence `40 DE 77 83 21 12 DC 42`)
+- The data immediately follows the check value
+- The first character after the last data value should be a newline
