@@ -58,20 +58,20 @@ try
 {
     struct ovf_segment * ovf_segment_ptr = new ovf_segment
     {
-        const_cast<char *>(""),
-        const_cast<char *>(""),
-        0,
-        const_cast<char *>(""),
-        const_cast<char *>(""),
-        const_cast<char *>(""),
-        const_cast<char *>(""),
-        0,
-        {0,0,0},
-        0,
-        {0,0,0},
-        {0,0,0},
-        0,
-        {{0,0,0},{0,0,0},{0,0,0}}
+        const_cast<char *>(""),   // title
+        const_cast<char *>(""),   // comment
+        0,                        // valuedim
+        const_cast<char *>(""),   // valueunits
+        const_cast<char *>(""),   // valuelabels
+        const_cast<char *>(""),   // meshtype
+        const_cast<char *>(""),   // meshunits
+        0,                        // pointcount
+        {0,0,0},                  // n_cells
+        0,                        // N
+        {0,0,0},                  // bounds_min
+        {0,0,0},                  // bounds_max
+        0,                        // lattice_constant
+        {{1,0,0},{0,1,0},{0,0,1}} // bravais_vectors
     };
 
     return ovf_segment_ptr;
@@ -141,24 +141,24 @@ catch( ... )
 int ovf_read_segment_data_4(struct ovf_file *ovf_file_ptr, int index, const struct ovf_segment *segment, float *data)
 try
 {
-    if (!ovf_file_ptr)
+    if( !ovf_file_ptr )
         return OVF_ERROR;
 
-    if (!segment)
+    if( !segment )
     {
         ovf_file_ptr->_file_handle->message_latest =
             "libovf ovf_read_segment_data_4: invalid segment pointer";
         return OVF_ERROR;
     }
 
-    if (!data)
+    if( !data )
     {
         ovf_file_ptr->_file_handle->message_latest =
             "libovf ovf_read_segment_data_4: invalid data pointer";
         return OVF_ERROR;
     }
 
-    if (!ovf_file_ptr->found)
+    if( !ovf_file_ptr->found )
     {
         ovf_file_ptr->_file_handle->message_latest = fmt::format(
             "libovf ovf_read_segment_data_4: file \'{}\' does not exist...",
@@ -166,7 +166,7 @@ try
         return OVF_ERROR;
     }
 
-    if (!ovf_file_ptr->is_ovf)
+    if( !ovf_file_ptr->is_ovf )
     {
         ovf_file_ptr->_file_handle->message_latest = fmt::format(
             "libovf ovf_read_segment_data_4: file \'{}\' is not ovf...",
@@ -174,7 +174,7 @@ try
         return OVF_ERROR;
     }
 
-    if (index >= ovf_file_ptr->n_segments)
+    if( index >= ovf_file_ptr->n_segments )
     {
         ovf_file_ptr->_file_handle->message_latest = fmt::format(
             "libovf ovf_read_segment_data_4: index ({}) >= n_segments ({}) of file \'{}\'...",
@@ -190,7 +190,7 @@ try
     // }
 
     int retcode = read_segment(ovf_file_ptr, segment, index, data);
-    if (retcode != OVF_OK)
+    if( retcode != OVF_OK )
         ovf_file_ptr->_file_handle->message_latest += "\novf_read_segment_data_4 failed.";
     return retcode;
 }

@@ -79,7 +79,7 @@ public:
 
     // Read a 3-vector
     template <typename T>
-    void Read_3Vector( T & var, std::string name, bool log_notfound = true );
+    void Read_3Vector( T * var, std::string name, bool log_notfound = true );
 };//end class FilterFileHandle
 
 // -----------------------------------------------------------------------------
@@ -135,7 +135,7 @@ void Filter_File_Handle::Require_Single( T& var, std::string name )
 
 // Reads a 3-component object, with optional logging in case of failure
 template <typename T>
-void Filter_File_Handle::Read_3Vector( T & var, std::string name, bool log_notfound )
+void Filter_File_Handle::Read_3Vector( T * var, std::string name, bool log_notfound )
 {
     try
     {

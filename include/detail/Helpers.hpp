@@ -9,6 +9,7 @@
 #include <fstream>
 #include <cctype>
 #include <array>
+#include <vector>
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
@@ -116,24 +117,26 @@ try
     std::string meshtype = "";
     ifile->Require_Single( meshtype, "# meshtype:" );
 
-    // ifile->Read_3Vector( segment->base[0], "# xbase:", true );
-    // ifile->Read_3Vector( segment->base[1], "# ybase:", true );
-    // ifile->Read_3Vector( segment->base[2], "# zbase:", true );
+    ifile->Read_3Vector( segment->bravais_vectors[0], "# xbase:", true );
+    ifile->Read_3Vector( segment->bravais_vectors[1], "# ybase:", true );
+    ifile->Read_3Vector( segment->bravais_vectors[2], "# zbase:", true );
 
     // ifile->Require_Single( segment->stepsize[0], "# xstepsize:" );
     // ifile->Require_Single( segment->stepsize[1], "# ystepsize:" );
     // ifile->Require_Single( segment->stepsize[2], "# zstepsize:" );
+    segment->lattice_constant = 1;
+
+    // Check mesh type
+    segment->pointcount = 1;
+    if( meshtype == "irregular" )
+        ifile->Require_Single( segment->pointcount, "# pointcount:" );
 
     ifile->Require_Single( segment->n_cells[0], "# xnodes:" );
     ifile->Require_Single( segment->n_cells[1], "# ynodes:" );
     ifile->Require_Single( segment->n_cells[2], "# znodes:" );
-    segment->N = segment->n_cells[0] * segment->n_cells[1] * segment->n_cells[2];
 
-    // Check mesh type
-    if( meshtype == "irregular" )
-    {
-        ifile->Require_Single( segment->pointcount, "# pointcount:" );
-    }
+    segment->N = segment->n_cells[0] * segment->n_cells[1] * segment->n_cells[2] * segment->pointcount;
+
 
     // Convert strings to char *
     segment->title = new char[title.length() + 1];
@@ -237,6 +240,15 @@ try
             file->_file_handle->message_latest = "OVF initial check value of binary data is inconsistent";
             return OVF_ERROR;
         }
+    }
+
+    // Check that we actually read in any data
+    if( n_cols*n_rows <= 0 )
+    {
+        file->_file_handle->message_latest = fmt::format(
+            "read_segment not reading in any data, because n_cols*n_rows={}*{}<=0 for file \"{}\". You may want to check the segment you passed in.",
+            n_cols, n_rows, file->filename);
+        return OVF_ERROR;
     }
 
     // Read the data
@@ -537,6 +549,7 @@ try
     output_to_file += fmt::format( "# valuelabels: spin_x_component spin_y_component spin_z_component \n");
     output_to_file += fmt::format( empty_line );
 
+    // TODO: this ovf library does not support mesh units yet
     output_to_file += fmt::format( "## Fundamental mesh measurement unit. "
                                     "Treated as a label:\n" );
     output_to_file += fmt::format( "# meshunit: unspecified\n" );
@@ -550,7 +563,7 @@ try
     output_to_file += fmt::format( "# zmax: {}\n", segment->bounds_max[2] );
     output_to_file += fmt::format( empty_line );
 
-    // TODO: Spirit does not support irregular geometry yet. Write ONLY rectangular mesh
+    // TODO: this ovf library does not support irregular geometry yet. Write ONLY rectangular mesh
     output_to_file += fmt::format( "# meshtype: rectangular\n" );
 
     // Bravais Lattice
@@ -567,12 +580,12 @@ try
                                     segment->bravais_vectors[2][1],
                                     segment->bravais_vectors[2][2] );
 
-    output_to_file += fmt::format( "# xstepsize: {}\n", 
-                                segment->lattice_constant * segment->bravais_vectors[0][0] );
-    output_to_file += fmt::format( "# ystepsize: {}\n", 
-                                segment->lattice_constant * segment->bravais_vectors[1][1] );
-    output_to_file += fmt::format( "# zstepsize: {}\n", 
-                                segment->lattice_constant * segment->bravais_vectors[2][2] );
+    // output_to_file += fmt::format( "# xstepsize: {}\n",
+    //                             segment->lattice_constant * segment->bravais_vectors[0][0] );
+    // output_to_file += fmt::format( "# ystepsize: {}\n",
+    //                             segment->lattice_constant * segment->bravais_vectors[1][1] );
+    // output_to_file += fmt::format( "# zstepsize: {}\n",
+    //                             segment->lattice_constant * segment->bravais_vectors[2][2] );
 
     output_to_file += fmt::format( "# xnodes: {}\n", segment->n_cells[0] );
     output_to_file += fmt::format( "# ynodes: {}\n", segment->n_cells[1] );
@@ -603,7 +616,16 @@ try
     output_to_file += fmt::format( "# Begin: Data {}\n", datatype_out );
 
     int n_rows = segment->n_cells[0]*segment->n_cells[1]*segment->n_cells[2];
-    int n_cols = 3; // segment->valuedim;
+    int n_cols = segment->valuedim;
+
+    // Check that we actually read in any data
+    if( n_cols*n_rows <= 0 )
+    {
+        file->_file_handle->message_latest = fmt::format(
+            "write_segment not writing out any data, because n_cols*n_rows={}*{}<=0 for file \"{}\". You may want to check the segment you passed in.",
+            n_cols, n_rows, file->filename);
+        return OVF_ERROR;
+    }
 
     if ( format == OVF_FORMAT_BIN || format == OVF_FORMAT_BIN8 || format == OVF_FORMAT_BIN4 )
         append_data_bin_to_string( output_to_file, vf, n_cols, n_rows, format );

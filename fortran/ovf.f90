@@ -208,14 +208,16 @@ contains
     end subroutine initialize_segment
 
 
-    function read_segment_header(self, segment) result(success)
+    function read_segment_header(self, segment, index_in) result(success)
         implicit none
-        class(ovf_file)             :: self
-        type(ovf_segment)           :: segment
-        integer                     :: success
+        class(ovf_file)               :: self
+        type(ovf_segment)             :: segment
+        integer, optional, intent(in) :: index_in
+        integer                       :: success
 
-        type(c_ovf_segment), target :: c_segment
-        type(c_ptr)                 :: c_segment_ptr
+        integer                       :: index
+        type(c_ovf_segment), target   :: c_segment
+        type(c_ptr)                   :: c_segment_ptr
 
         interface
             function ovf_read_segment_header(file, index, segment) &
@@ -230,8 +232,14 @@ contains
             end function ovf_read_segment_header
         end interface
 
+        if( present(index_in) ) then
+            index = index_in
+        else
+            index = 1
+        end if
+
         c_segment_ptr = c_loc(c_segment)
-        success = ovf_read_segment_header(self%private_file_binding, 0, c_segment_ptr)
+        success = ovf_read_segment_header(self%private_file_binding, index_in, c_segment_ptr)
 
         if ( success == OVF_OK) then
             call fill_ovf_segment(c_segment, segment)

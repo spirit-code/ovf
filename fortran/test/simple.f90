@@ -35,6 +35,7 @@ use ovf
     call file%open_file("fortran/test/testfile_f.ovf")
     segment%N_Cells = [ 2, 2, 1 ]
     segment%N = product(segment%N_Cells)
+    segment%ValueDim = 3
 
     allocate( array_4(3, segment%N) )
     array_4 = 0
@@ -66,7 +67,7 @@ use ovf
 
     ! Read back in from file
     success = file%read_segment_header(segment)
-    if ( success == OVF_OK) then
+    if( success == OVF_OK ) then
         write (*,*) "test read_segment_header:"
         write (*,*) "   n_cells = ", segment%N_Cells
         write (*,*) "   n_total = ", segment%N
@@ -76,7 +77,7 @@ use ovf
     endif
 
     success = file%read_segment_data(segment, array_8)
-    if ( success == OVF_OK) then
+    if( success == OVF_OK ) then
         write (*,*) "test read_segment_data (index 1):"
         write (*,*) "   array_8(:,2) = ", array_8(:,2)
     else
@@ -85,7 +86,7 @@ use ovf
     endif
 
     success = file%read_segment_data(segment, array_8, 2)
-    if ( success == OVF_OK) then
+    if( success == OVF_OK ) then
         write (*,*) "test read_segment_data (index 2):"
         write (*,*) "   array_8(:,2) = ", array_8(:,2)
     else
@@ -94,7 +95,7 @@ use ovf
     endif
 
     ! Close file
-    if ( file%close_file() == OVF_OK) then
+    if( file%close_file() == OVF_OK ) then
         write (*,*) "test file closed"
     else
         write (*,*) "test close_file did not work."
