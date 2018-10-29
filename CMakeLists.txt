@@ -35,7 +35,7 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 endif()
 
 ### flag for fmt to be header-only
-add_definitions( -DFMT_HEADER_ONLY )
+add_definitions( -DFMT_HEADER_ONLY -DFMT_TEST=no )
 
 ### Object library
 add_library( ${PROJECT_NAME} OBJECT ${SOURCE_FILES} )
