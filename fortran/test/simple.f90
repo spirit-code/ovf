@@ -32,7 +32,7 @@ use ovf
 
 
     ! Write a file
-    call file%open_file("fortran/test/testfile_f.ovf")
+    call file%open_file("testfile_f.ovf")
     segment%N_Cells = [ 2, 2, 1 ]
     segment%N = product(segment%N_Cells)
     segment%ValueDim = 3
@@ -61,7 +61,7 @@ use ovf
         ! write (*,*) "n_cells = ", segment%N_Cells
         ! write (*,*) "n_total = ", segment%N
     else
-        write (*,*) "test write_segment did not work. Message: ", file%latest_message
+        write (*,*) "test append_segment did not work. Message: ", file%latest_message
         STOP 1
     endif
 
@@ -98,7 +98,7 @@ use ovf
     if( file%close_file() == OVF_OK ) then
         write (*,*) "test file closed"
     else
-        write (*,*) "test close_file did not work."
+        write (*,*) "test close_file on \'testfile_f.ovf\' did not work."
         STOP 1
     endif
 

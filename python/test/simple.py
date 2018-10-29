@@ -12,8 +12,6 @@ import unittest
 
 ##########
 
-testfile = os.path.abspath(os.path.dirname( __file__ ) + "/testfile_py.ovf")
-
 class TestState(unittest.TestCase):
     def test_nonexistent(self):
         print("----- ovf test nonexistent")
@@ -30,10 +28,10 @@ class TestState(unittest.TestCase):
 
     def test_write(self):
         print("----- ovf test writing")
-        with ovf.ovf_file(testfile) as ovf_file:
+        with ovf.ovf_file("testfile_py.ovf") as ovf_file:
             data = np.zeros((2, 2, 1, 3), dtype='d')
             data[0,1,0,:] = [3.0, 2.0, 1.0]
-            segment = ovf.ovf_segment(n_cells=[2,2,1])
+            segment = ovf.ovf_segment(n_cells=[2,2,1], valuedim=3)
             success = ovf_file.write_segment(segment, data)
             if success != ovf.OK:
                 print("write_segment failed: ", ovf_file.get_latest_message())
@@ -46,7 +44,7 @@ class TestState(unittest.TestCase):
         print("----- ovf test writing done")
 
         print("----- ovf test reading")
-        with ovf.ovf_file(testfile) as ovf_file:
+        with ovf.ovf_file("testfile_py.ovf") as ovf_file:
             print("found:      ", ovf_file.found)
             print("is_ovf:     ", ovf_file.is_ovf)
             print("n_segments: ", ovf_file.n_segments)

@@ -56,6 +56,7 @@ type :: ovf_file
     type(c_ptr)                     :: private_file_binding
 contains
     procedure :: open_file           => open_file
+    procedure :: update              => update
     procedure :: read_segment_header => read_segment_header
     procedure :: read_segment_data_4
     procedure :: read_segment_data_8
@@ -153,8 +154,20 @@ contains
 
         message_ptr = ovf_latest_message(file%private_file_binding)
         file%latest_message = get_string(message_ptr)
-
     end subroutine handle_messages
+
+
+    subroutine update(self)
+        implicit none
+        class(ovf_file)                 :: self
+
+        type(c_ovf_file), pointer       :: c_file
+
+        call c_f_pointer(self%private_file_binding, c_file)
+        self%found      = c_file%found  == 1
+        self%is_ovf     = c_file%is_ovf == 1
+        self%n_segments = c_file%n_segments
+    end subroutine update
 
 
     subroutine open_file(self, filename)
@@ -175,13 +188,12 @@ contains
         end interface
 
         c_file_ptr = ovf_open(trim(filename) // c_null_char)
-        call c_f_pointer(c_file_ptr, c_file)
-
-        self%filename      = get_string(c_file%filename)
-        self%found         = c_file%found  == 1
-        self%is_ovf        = c_file%is_ovf == 1
-        self%n_segments    = c_file%n_segments
         self%private_file_binding = c_file_ptr
+
+        call c_f_pointer(self%private_file_binding, c_file)
+        self%filename   = get_string(c_file%filename)
+
+        call self%update()
     end subroutine open_file
 
 
@@ -238,11 +250,19 @@ contains
             index = 1
         end if
 
-        c_segment_ptr = c_loc(c_segment)
-        success = ovf_read_segment_header(self%private_file_binding, index_in, c_segment_ptr)
+        ! Parse into C-structure
+        c_segment = get_c_ovf_segment(segment)
 
-        if ( success == OVF_OK) then
+        ! Get C-pointer to C-structure
+        c_segment_ptr = c_loc(c_segment)
+
+        ! Call the C-API
+        success = ovf_read_segment_header(self%private_file_binding, index-1, c_segment_ptr)
+
+        ! If successful, ransfer data back to Fortran structure
+        if( success == OVF_OK ) then
             call fill_ovf_segment(c_segment, segment)
+            call self%update()
         end if
 
         call handle_messages(self)
@@ -283,7 +303,7 @@ contains
             index = 1
         end if
 
-        if (allocated(array)) then
+        if( allocated(array) ) then
             ! TODO: check array dimensions
         else
             allocate( array(segment%ValueDim, segment%N) )
@@ -299,6 +319,10 @@ contains
 
         ! Call the C-API
         success = ovf_read_segment_data_4(self%private_file_binding, index-1, c_segment_ptr, c_array_ptr)
+
+        if( success == OVF_OK ) then
+            call self%update()
+        end if
 
         call handle_messages(self)
 
@@ -338,7 +362,7 @@ contains
             index = 1
         end if
 
-        if (allocated(array)) then
+        if( allocated(array) ) then
             ! TODO: check array dimensions
         else
             allocate( array(segment%ValueDim, segment%N) )
@@ -354,6 +378,10 @@ contains
 
         ! Call the C-API
         success = ovf_read_segment_data_8(self%private_file_binding, index-1, c_segment_ptr, c_array_ptr)
+
+        if( success == OVF_OK ) then
+            call self%update()
+        end if
 
         call handle_messages(self)
 
@@ -403,6 +431,10 @@ contains
         ! Call the C-API
         success = ovf_write_segment_4(self%private_file_binding, c_segment_ptr, c_array_ptr, fileformat)
 
+        if( success == OVF_OK ) then
+            call self%update()
+        end if
+
         call handle_messages(self)
 
     end function write_segment_4
@@ -450,6 +482,10 @@ contains
 
         ! Call the C-API
         success = ovf_write_segment_8(self%private_file_binding, c_segment_ptr, c_array_ptr, fileformat)
+
+        if( success == OVF_OK ) then
+            call self%update()
+        end if
 
         call handle_messages(self)
 
@@ -499,6 +535,10 @@ contains
         ! Call the C-API
         success = ovf_append_segment_4(self%private_file_binding, c_segment_ptr, c_array_ptr, fileformat)
 
+        if( success == OVF_OK ) then
+            call self%update()
+        end if
+
         call handle_messages(self)
 
     end function append_segment_4
@@ -546,6 +586,10 @@ contains
 
         ! Call the C-API
         success = ovf_append_segment_8(self%private_file_binding, c_segment_ptr, c_array_ptr, fileformat)
+
+        if( success == OVF_OK ) then
+            call self%update()
+        end if
 
         call handle_messages(self)
 

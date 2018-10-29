@@ -49,26 +49,26 @@ try
 
     // get the number of segments from the occurrences of "# Begin: Segment"
     int n_begin_segment = 0;
-    
-    std::ios::pos_type end = ifile->GetPosition( std::ios::end ); 
-    
-    // NOTE: the keyword to find must be lower case since the Filter File Handle 
+
+    std::ios::pos_type end = ifile->GetPosition( std::ios::end );
+
+    // NOTE: the keyword to find must be lower case since the Filter File Handle
     // converts the content of the input file to lower case automatically
     while( ifile->Find( "# begin: segment" ) )
     {
-        std::ios::pos_type pos = ifile->GetPosition(); 
+        std::ios::pos_type pos = ifile->GetPosition();
         file->_file_handle->segment_fpos.push_back( pos );
         ifile->SetLimits( pos, end );
 
         ++n_begin_segment;
     }
-    
+
     // find the very last keyword of the file
     file->_file_handle->segment_fpos.push_back( end );
 
     // reset limits
     ifile->ResetLimits();
-    
+
     // close the file
     ifile = NULL;
 
@@ -86,7 +86,7 @@ inline int read_segment_header( ovf_file * file, int idx_seg, ovf_segment * segm
 try
 {
     // open the file
-    auto ifile = std::unique_ptr<Filter_File_Handle>(new Filter_File_Handle( file->filename, comment_tag )); 
+    auto ifile = std::unique_ptr<Filter_File_Handle>(new Filter_File_Handle( file->filename, comment_tag ));
 
     // Set limits within which to read
     ifile->SetLimits( file->_file_handle->segment_fpos[idx_seg], file->_file_handle->segment_fpos[idx_seg+1] );
@@ -183,7 +183,7 @@ try
     std::istringstream repr( datatype_tmp );
     repr >> datatype;
     int binary_length = 0;
-    if( datatype == "binary" ) 
+    if( datatype == "binary" )
         repr >> binary_length;
 
 
@@ -232,10 +232,10 @@ try
     {
         const float ref_4b = *reinterpret_cast<const float *>( &test_hex_4b );
         float read_4byte = 0;
-        
+
         // check the validity of the initial check value read with the reference one
         ifile->read( reinterpret_cast<char *>( &read_4byte ), sizeof(float) );
-        if ( read_4byte != ref_4b ) 
+        if ( read_4byte != ref_4b )
         {
             file->_file_handle->message_latest = "OVF initial check value of binary data is inconsistent";
             return OVF_ERROR;
@@ -380,7 +380,7 @@ inline std::string top_header_string()
     std::string ret = "# OOMMF OVF 2.0\n";
     ret += empty_line;
 
-    // create padding string 
+    // create padding string
     std::string padding( n_segments_str_digits, '0' );
     // write padding plus n_segments
     ret += fmt::format( "# Segment count: {}\n", padding );
@@ -391,17 +391,17 @@ inline std::string top_header_string()
 inline int increment_n_segments(ovf_file *file)
 try
 {
-    std::fstream filestream( file->filename ); 
+    std::fstream filestream( file->filename );
 
     // Update n_segments
     file->n_segments++;
-    
+
     // Convert updated n_segment into padded string
     std::string new_n_str = std::to_string( file->n_segments );
     std::string::size_type new_n_len = new_n_str.length();
 
     std::string::size_type padding_len = n_segments_str_digits - new_n_len;
-    std::string padding( padding_len, '0' ); 
+    std::string padding( padding_len, '0' );
 
     // n_segments_pos is the end of the line that contains '#segment count' (after '\n')
     std::ios::off_type offset = n_segments_str_digits + 1;
@@ -415,7 +415,7 @@ try
     ifile->Read_String( n_segments_as_str, "# segment count:" );
     // Save the file position indicator as we have to increment n_segment
     std::ios::pos_type n_segments_pos = ifile->GetPosition();
-    
+
 
     // Go to the beginning '#segment count' value position
     filestream.seekg( n_segments_pos );
@@ -460,11 +460,11 @@ try
                 output_to_file +=
                     std::string( reinterpret_cast<char *>(buffer.data()), n_cols*sizeof(double) );
             }
-        } 
+        }
         else
         {
             for (unsigned int i=0; i<n_rows; i++)
-                output_to_file += 
+                output_to_file +=
                     std::string( reinterpret_cast<const char *>(&vf[i]), n_cols*sizeof(double) );
         }
     }
@@ -472,7 +472,7 @@ try
     {
         output_to_file +=
             std::string( reinterpret_cast<const char *>(&ref_4b), sizeof(float) );
-        
+
         // in case that T is 8bytes long
         if (sizeof(T) == sizeof(double))
         {
@@ -484,7 +484,7 @@ try
                 output_to_file +=
                     std::string( reinterpret_cast<char *>(buffer.data()), n_cols*sizeof(float) );
             }
-        } 
+        }
         else
         {
             for (unsigned int i=0; i<n_rows; i++)
@@ -567,16 +567,16 @@ try
     output_to_file += fmt::format( "# meshtype: rectangular\n" );
 
     // Bravais Lattice
-    output_to_file += fmt::format( "# xbase: {} {} {}\n", 
-                                    segment->bravais_vectors[0][0], 
+    output_to_file += fmt::format( "# xbase: {} {} {}\n",
+                                    segment->bravais_vectors[0][0],
                                     segment->bravais_vectors[0][1],
                                     segment->bravais_vectors[0][2] );
     output_to_file += fmt::format( "# ybase: {} {} {}\n",
-                                    segment->bravais_vectors[1][0], 
+                                    segment->bravais_vectors[1][0],
                                     segment->bravais_vectors[1][1],
                                     segment->bravais_vectors[1][2] );
     output_to_file += fmt::format( "# zbase: {} {} {}\n",
-                                    segment->bravais_vectors[2][0], 
+                                    segment->bravais_vectors[2][0],
                                     segment->bravais_vectors[2][1],
                                     segment->bravais_vectors[2][2] );
 
@@ -595,21 +595,19 @@ try
     output_to_file += fmt::format( "# End: Header\n" );
     output_to_file += fmt::format( empty_line );
 
-    if( sizeof(T) == sizeof(float) &&
-        format == OVF_FORMAT_BIN )
+    if( sizeof(T) == sizeof(float) && format == OVF_FORMAT_BIN )
         format = OVF_FORMAT_BIN4;
-    else if( sizeof(T) == sizeof(double) &&
-        format == OVF_FORMAT_BIN )
+    else if( sizeof(T) == sizeof(double) && format == OVF_FORMAT_BIN )
         format = OVF_FORMAT_BIN8;
 
     std::string datatype_out = "";
     if ( format == OVF_FORMAT_BIN8 )
         datatype_out = "Binary 8";
-    else if ( format == OVF_FORMAT_BIN4 ) 
+    else if ( format == OVF_FORMAT_BIN4 )
         datatype_out = "Binary 4";
-    else if( format == OVF_FORMAT_TEXT ) 
+    else if( format == OVF_FORMAT_TEXT )
         datatype_out = "Text";
-    else if( format == OVF_FORMAT_CSV ) 
+    else if( format == OVF_FORMAT_CSV )
         datatype_out = "CSV";
 
     // Data
@@ -633,8 +631,8 @@ try
         append_data_txt_to_string( output_to_file, vf, n_cols, n_rows );
     else if ( format == OVF_FORMAT_CSV )
         append_data_txt_to_string( output_to_file, vf, n_cols, n_rows, "," );
-    else
-        // TODO...
+    // else
+    //     // TODO...
 
     output_to_file += fmt::format( "# End: Data {}\n", datatype_out );
     output_to_file += fmt::format( "# End: Segment\n" );
@@ -647,6 +645,26 @@ try
 
     file->found  = true;
     file->is_ovf = true;
+
+    // Create or append segment_fpos
+    auto ifile = std::unique_ptr<Filter_File_Handle>(new Filter_File_Handle( file->filename, comment_tag ));
+    std::ios::pos_type end = ifile->GetPosition( std::ios::end );
+    if( append && file->n_segments > 0 )
+    {
+        ifile->SetLimits( file->_file_handle->segment_fpos[file->n_segments], end );
+    }
+    ifile->Find( "# begin: segment" );
+    std::ios::pos_type pos = ifile->GetPosition();
+    if( append && file->n_segments > 0 )
+    {
+        file->_file_handle->segment_fpos[file->n_segments] = pos;
+    }
+    else
+    {
+        file->_file_handle->segment_fpos = std::vector<std::ios::pos_type>(0);
+        file->_file_handle->segment_fpos.push_back( pos );
+    }
+    file->_file_handle->segment_fpos.push_back( end );
 
     // Increment the n_segments after succesfully appending the segment body to the file
     return increment_n_segments(file);
@@ -670,12 +688,12 @@ catch( ... )
 //     {
 //         // NOTE: seg_idx.max = segment_fpos.size - 2
 //         // if ( idx_seg >= ( this->segment_fpos.size() - 1 ) )
-//         //     spirit_throw( Utility::Exception_Classifier::Input_parse_failed, 
+//         //     spirit_throw( Utility::Exception_Classifier::Input_parse_failed,
 //         //                     Utility::Log_Level::Error,
 //         //                     "OVF error while choosing segment to read - "
 //         //                     "index out of bounds" );
 
-//         this->ifile->SetLimits( this->segment_fpos[idx_seg], 
+//         this->ifile->SetLimits( this->segment_fpos[idx_seg],
 //                                 this->segment_fpos[idx_seg+1] );
 
 //         this->ifile->Read_Single( var, name );
@@ -698,12 +716,12 @@ catch( ... )
 //     {
 //         // NOTE: seg_idx.max = segment_fpos.size - 2
 //         // if ( idx_seg >= ( this->segment_fpos.size() - 1 ) )
-//         //     spirit_throw( Utility::Exception_Classifier::Input_parse_failed, 
+//         //     spirit_throw( Utility::Exception_Classifier::Input_parse_failed,
 //         //                     Utility::Log_Level::Error,
 //         //                     "OVF error while choosing segment to read - "
 //         //                     "index out of bounds" );
 
-//         this->ifile->SetLimits( this->segment_fpos[idx_seg], 
+//         this->ifile->SetLimits( this->segment_fpos[idx_seg],
 //                                 this->segment_fpos[idx_seg+1] );
 
 //         this->ifile->Read_String( var, name, false );

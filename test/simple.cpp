@@ -15,7 +15,7 @@ TEST_CASE( "NonExistent", "[nonexistent]" )
 
 TEST_CASE( "Write", "[write]" )
 {
-    const char * testfile = "test/testfile_cpp.ovf";
+    const char * testfile = "testfile_cpp.ovf";
 
     SECTION( "write" )
     {
@@ -84,7 +84,7 @@ TEST_CASE( "Write", "[write]" )
 
 TEST_CASE( "Read", "[read]")
 {
-    const char * testfile = "test/testfile_cpp.ovf";
+    const char * testfile = "testfile_cpp.ovf";
 
     SECTION( "first segment" )
     {
