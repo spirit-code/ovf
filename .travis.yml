@@ -46,8 +46,10 @@ matrix:
           packages:
           - g++-5
           - gfortran-5
+          - python2.7
           sources:
           - sourceline: 'ppa:ubuntu-toolchain-r/test'
+          - sourceline: 'ppa:jonathonf/python-2.7'
 
 
 before_install:
