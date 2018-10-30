@@ -613,8 +613,6 @@ contains
 
         success = ovf_close(self%private_file_binding)
 
-        call handle_messages(self)
-
     end function close_file
 
 
