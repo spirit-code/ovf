@@ -7,7 +7,7 @@ set(META_AUTHOR_DOMAIN        "https://github.com/spirit-code/ovf")
 set(META_AUTHOR_MAINTAINER    "Gideon Mueller")
 set(META_AUTHOR_EMAIL         "g.mueller@fz-juelich.de")
 set(META_VERSION_MAJOR        "0")
-set(META_VERSION_MINOR        "2")
+set(META_VERSION_MINOR        "3")
 set(META_VERSION_PATCH        "0")
 set(META_VERSION              "${META_VERSION_MAJOR}.${META_VERSION_MINOR}.${META_VERSION_PATCH}")
 #############################################
@@ -16,14 +16,13 @@ project(${META_PROJECT_NAME} VERSION ${META_VERSION})
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+#############################################
 option( OVF_BUILD_PYTHON_BINDINGS  "Build the shared library for Python."  ON )
 option( OVF_BUILD_FORTRAN_BINDINGS "Build the module file for Fortran."    ON )
 option( OVF_BUILD_TEST             "Build unit tests for the ovf library." ON )
+#############################################
 
-set(SOURCE_FILES
-    src/ovf.cpp
-    src/detail/Filter_File_Handle.cpp
-)
+set(SOURCE_FILES src/ovf.cpp)
 
 set(HEADER_FILES
     src/ovf.h
@@ -36,7 +35,7 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 endif()
 
 ### flag for fmt to be header-only
-add_definitions( -DFMT_HEADER_ONLY )
+add_definitions( -DFMT_HEADER_ONLY -DFMT_TEST=no )
 
 ### Object library
 add_library( ${PROJECT_NAME} OBJECT ${SOURCE_FILES} )

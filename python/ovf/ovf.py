@@ -1,16 +1,27 @@
-import ovf.ovflib as ovflib
+import ovflib
 import ctypes
 import numpy as np
 
 ### Load Library
 _ovf = ovflib.LoadOVFLibrary()
 
+### Return codes
+OK      = -1
+ERROR   = -2
+INVALID = -3
 
+### File formats
+FILEFORMAT_BIN  = -53
+FILEFORMAT_BIN4 = -54
+FILEFORMAT_BIN8 = -55
+FILEFORMAT_TEXT = -56
+FILEFORMAT_CSV  = -57
 
 class ovf_segment(ctypes.Structure):
     ### Some properties
     _fields_ = [
         ("title",            ctypes.c_char_p),
+        ("comment",          ctypes.c_char_p),
         ("valuedim",         ctypes.c_int),
         ("valueunits",       ctypes.c_char_p),
         ("valuelabels",      ctypes.c_char_p),
@@ -25,10 +36,28 @@ class ovf_segment(ctypes.Structure):
         ("bravais_vectors",  ctypes.c_float*3*3)
     ]
 
-    def __init__(self, title="", valuedim=0, valueunits=3, valuelabels=[], meshtype="", meshunits="", n_cells=[1,1,1]):
+    def __init__(self, title="", comment="", valuedim=1, valueunits="", valuelabels="", meshtype="", meshunits="",
+                bounds_min=[0.0, 0.0, 0.0], bounds_max=[0.0, 0.0, 0.0], lattice_constant=0.0,
+                bravais_vectors=[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+                pointcount=0, n_cells=[1,1,1]):
+
+        self.title       = title
+        self.comment     = comment
+        self.valuedim    = valuedim
+        self.valueunits  = valueunits
+        self.valuelabels = valuelabels
+        self.meshtype    = meshtype
+        self.meshunits   = meshunits
+        self.pointcount  = pointcount
         for i in range(3):
             self.n_cells[i] = n_cells[i]
         self.N = n_cells[0]*n_cells[1]*n_cells[2]
+        for i in range(3):
+            self.bounds_min[i] = bounds_min[i]
+            self.bounds_max[i] = bounds_max[i]
+            for j in range(3):
+                self.bravais_vectors[i][j]  = bravais_vectors[i][j]
+        self.lattice_constant = lattice_constant
 
 ### --------------------------------------------------------------
 

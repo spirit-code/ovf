@@ -20,6 +20,7 @@ end type c_ovf_file
 
 type, bind(c) :: c_ovf_segment
     type(c_ptr)         :: title
+    type(c_ptr)         :: comment
     integer(kind=c_int) :: valuedim
     type(c_ptr)         :: valueunits
     type(c_ptr)         :: valuelabels
@@ -40,9 +41,11 @@ type, bind(c) :: c_ovf_segment
 end type c_ovf_segment
 
 type :: ovf_segment
-    character(len=:), allocatable :: Title, ValueUnits, ValueLabels,  MeshType, MeshUnits
+    character(len=:), allocatable :: Title, Comment, ValueUnits, ValueLabels,  MeshType, MeshUnits
     integer                       :: ValueDim, PointCount, N_Cells(3), N 
     real(8)                       :: bounds_min(3), bounds_max(3), lattice_constant, bravais_vectors(3,3)
+contains
+    procedure :: initialize       => initialize_segment
 end type ovf_segment 
 
 type :: ovf_file
@@ -53,6 +56,7 @@ type :: ovf_file
     type(c_ptr)                     :: private_file_binding
 contains
     procedure :: open_file           => open_file
+    procedure :: update              => update
     procedure :: read_segment_header => read_segment_header
     procedure :: read_segment_data_4
     procedure :: read_segment_data_8
@@ -101,6 +105,7 @@ contains
         type(c_ovf_segment)                     :: c_segment
 
         c_segment%title      = c_loc(segment%Title)
+        c_segment%comment    = c_loc(segment%Comment)
         c_segment%valueunits = c_loc(segment%ValueUnits)
         c_segment%valuedim   = segment%ValueDim
         c_segment%n_cells(:) = segment%n_cells(:)
@@ -116,9 +121,14 @@ contains
         type(ovf_segment),   intent(inout) :: segment
 
         segment%Title      = get_string(c_segment%title)
+        segment%Comment    = get_string(c_segment%comment)
 
+        segment%ValueLabels = get_string(c_segment%valuelabels)
         segment%ValueUnits = get_string(c_segment%valueunits)
         segment%ValueDim   = c_segment%valuedim
+
+        segment%MeshUnits = get_string(c_segment%meshunits)
+        segment%MeshType = get_string(c_segment%meshtype)
 
         segment%N_Cells(:) = c_segment%n_cells(:)
         segment%N          = product(c_segment%n_cells)
@@ -129,7 +139,7 @@ contains
     subroutine handle_messages(file)
         implicit none
 
-        class(ovf_file) :: file
+        type(ovf_file)  :: file
         type(c_ptr)     :: message_ptr
 
         interface
@@ -144,8 +154,20 @@ contains
 
         message_ptr = ovf_latest_message(file%private_file_binding)
         file%latest_message = get_string(message_ptr)
-
     end subroutine handle_messages
+
+
+    subroutine update(self)
+        implicit none
+        class(ovf_file)                 :: self
+
+        type(c_ovf_file), pointer       :: c_file
+
+        call c_f_pointer(self%private_file_binding, c_file)
+        self%found      = c_file%found  == 1
+        self%is_ovf     = c_file%is_ovf == 1
+        self%n_segments = c_file%n_segments
+    end subroutine update
 
 
     subroutine open_file(self, filename)
@@ -153,8 +175,8 @@ contains
         class(ovf_file)                 :: self
         character(len=*), intent(in)    :: filename
 
-        type(c_ovf_file), pointer       :: f_file
-        type(c_ptr)                     :: c_file
+        type(c_ovf_file), pointer       :: c_file
+        type(c_ptr)                     :: c_file_ptr
 
         interface
             function ovf_open(filename) &
@@ -165,25 +187,49 @@ contains
             end function ovf_open
         end interface
 
-        c_file = ovf_open(trim(filename) // c_null_char)
-        call c_f_pointer(c_file, f_file)
+        c_file_ptr = ovf_open(trim(filename) // c_null_char)
+        self%private_file_binding = c_file_ptr
 
-        self%filename      = get_string(f_file%filename)
-        self%found         = f_file%found  == 1
-        self%is_ovf        = f_file%is_ovf == 1
-        self%n_segments    = f_file%n_segments
-        self%private_file_binding = c_file
+        call c_f_pointer(self%private_file_binding, c_file)
+        self%filename   = get_string(c_file%filename)
+
+        call self%update()
     end subroutine open_file
 
 
-    function read_segment_header(self, segment) result(success)
+    subroutine initialize_segment(self)
         implicit none
-        class(ovf_file)             :: self
-        type(ovf_segment)           :: segment
-        integer                     :: success
+        class(ovf_segment)              :: self
 
-        type(c_ovf_segment), target :: c_segment
-        type(c_ptr)                 :: c_segment_ptr
+        type(c_ovf_segment), pointer     :: c_segment
+        type(c_ptr)                     :: c_segment_ptr
+
+        interface
+            function ovf_segment_initialize() &
+                bind ( C, name = "ovf_segment_initialize" ) 
+            use, intrinsic :: iso_c_binding
+                type(c_ptr) :: ovf_segment_initialize
+            end function ovf_segment_initialize
+        end interface
+
+        c_segment_ptr = ovf_segment_initialize()
+        call c_f_pointer(c_segment_ptr, c_segment)
+
+        call fill_ovf_segment(c_segment, self)
+
+    end subroutine initialize_segment
+
+
+    function read_segment_header(self, segment, index_in) result(success)
+        implicit none
+        class(ovf_file)               :: self
+        type(ovf_segment)             :: segment
+        integer, optional, intent(in) :: index_in
+        integer                       :: success
+
+        integer                       :: index
+        type(c_ovf_segment), target   :: c_segment
+        type(c_ptr)                   :: c_segment_ptr
 
         interface
             function ovf_read_segment_header(file, index, segment) &
@@ -198,11 +244,25 @@ contains
             end function ovf_read_segment_header
         end interface
 
-        c_segment_ptr = c_loc(c_segment)
-        success = ovf_read_segment_header(self%private_file_binding, 0, c_segment_ptr)
+        if( present(index_in) ) then
+            index = index_in
+        else
+            index = 1
+        end if
 
-        if ( success == OVF_OK) then
+        ! Parse into C-structure
+        c_segment = get_c_ovf_segment(segment)
+
+        ! Get C-pointer to C-structure
+        c_segment_ptr = c_loc(c_segment)
+
+        ! Call the C-API
+        success = ovf_read_segment_header(self%private_file_binding, index-1, c_segment_ptr)
+
+        ! If successful, ransfer data back to Fortran structure
+        if( success == OVF_OK ) then
             call fill_ovf_segment(c_segment, segment)
+            call self%update()
         end if
 
         call handle_messages(self)
@@ -243,7 +303,7 @@ contains
             index = 1
         end if
 
-        if (allocated(array)) then
+        if( allocated(array) ) then
             ! TODO: check array dimensions
         else
             allocate( array(segment%ValueDim, segment%N) )
@@ -259,6 +319,10 @@ contains
 
         ! Call the C-API
         success = ovf_read_segment_data_4(self%private_file_binding, index-1, c_segment_ptr, c_array_ptr)
+
+        if( success == OVF_OK ) then
+            call self%update()
+        end if
 
         call handle_messages(self)
 
@@ -298,7 +362,7 @@ contains
             index = 1
         end if
 
-        if (allocated(array)) then
+        if( allocated(array) ) then
             ! TODO: check array dimensions
         else
             allocate( array(segment%ValueDim, segment%N) )
@@ -314,6 +378,10 @@ contains
 
         ! Call the C-API
         success = ovf_read_segment_data_8(self%private_file_binding, index-1, c_segment_ptr, c_array_ptr)
+
+        if( success == OVF_OK ) then
+            call self%update()
+        end if
 
         call handle_messages(self)
 
@@ -363,6 +431,10 @@ contains
         ! Call the C-API
         success = ovf_write_segment_4(self%private_file_binding, c_segment_ptr, c_array_ptr, fileformat)
 
+        if( success == OVF_OK ) then
+            call self%update()
+        end if
+
         call handle_messages(self)
 
     end function write_segment_4
@@ -410,6 +482,10 @@ contains
 
         ! Call the C-API
         success = ovf_write_segment_8(self%private_file_binding, c_segment_ptr, c_array_ptr, fileformat)
+
+        if( success == OVF_OK ) then
+            call self%update()
+        end if
 
         call handle_messages(self)
 
@@ -459,6 +535,10 @@ contains
         ! Call the C-API
         success = ovf_append_segment_4(self%private_file_binding, c_segment_ptr, c_array_ptr, fileformat)
 
+        if( success == OVF_OK ) then
+            call self%update()
+        end if
+
         call handle_messages(self)
 
     end function append_segment_4
@@ -507,6 +587,10 @@ contains
         ! Call the C-API
         success = ovf_append_segment_8(self%private_file_binding, c_segment_ptr, c_array_ptr, fileformat)
 
+        if( success == OVF_OK ) then
+            call self%update()
+        end if
+
         call handle_messages(self)
 
     end function append_segment_8
@@ -528,8 +612,6 @@ contains
         end interface
 
         success = ovf_close(self%private_file_binding)
-
-        call handle_messages(self)
 
     end function close_file
 

@@ -46,12 +46,17 @@ matrix:
           packages:
           - g++-5
           - gfortran-5
+          - python2.7
           sources:
           - sourceline: 'ppa:ubuntu-toolchain-r/test'
+          - sourceline: 'ppa:jonathonf/python-2.7'
 
 
 before_install:
-  - sudo pip install numpy wheel twine
+  - python --version
+  - if [ "$TRAVIS_OS_NAME" != "osx" ]; then sudo pip uninstall -y six chardet pyOpenSSL; fi
+  - sudo pip install --upgrade pip six pyOpenSSL
+  - sudo pip install numpy wheel urllib3==1.23 twine coveralls
   # Run homebrew on osx
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update; fi
   # Setup default versions and override compiler if needed
@@ -78,6 +83,14 @@ install:
     cd build
     cmake ${CMAKE_OPTIONS} ..
   - make -j2
+  - cd ..
+
+
+before_script:
+  # Test everything
+  - |
+    cd build
+    ctest --output-on-failure
   - cd ..
 
 
