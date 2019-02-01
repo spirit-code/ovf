@@ -137,10 +137,10 @@ TEST_CASE( "Read", "[read]")
         REQUIRE( segment->N == 4 );
 
         // data
-        std::vector<float> field(3*segment->N);
+        std::vector<double> field(3*segment->N);
 
         // read data
-        success = ovf_read_segment_data_4(file, index, segment, field.data());
+        success = ovf_read_segment_data_8(file, index, segment, field.data());
         if( OVF_OK != success )
             std::cerr << ovf_latest_message(file) << std::endl;
         REQUIRE( success == OVF_OK );

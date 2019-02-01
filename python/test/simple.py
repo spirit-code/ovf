@@ -31,12 +31,17 @@ class TestState(unittest.TestCase):
         with ovf.ovf_file("testfile_py.ovf") as ovf_file:
             data = np.zeros((2, 2, 1, 3), dtype='d')
             data[0,1,0,:] = [3.0, 2.0, 1.0]
-            segment = ovf.ovf_segment(n_cells=[2,2,1], valuedim=3)
+            segment = ovf.ovf_segment(
+                title="python write test",
+                comment="more details in this comment...",
+                n_cells=[2,2,1],
+                valuedim=3)
             success = ovf_file.write_segment(segment, data)
             if success != ovf.OK:
                 print("write_segment failed: ", ovf_file.get_latest_message())
             self.assertTrue( success == ovf.OK )
             data[0,1,0,:] = [4.0, 5.0, 6.0]
+            segment.title = "python append test".encode('utf-8')
             success = ovf_file.append_segment(segment, data)
             if success != ovf.OK:
                 print("append_segment failed: ", ovf_file.get_latest_message())
@@ -52,15 +57,22 @@ class TestState(unittest.TestCase):
             success = ovf_file.read_segment_header(0, segment)
             if success != ovf.OK:
                 print("read_segment_header failed: ", ovf_file.get_latest_message())
-            data_shape = (segment.n_cells[0], segment.n_cells[1], segment.n_cells[2], 3)
-            print("data shape: ", data_shape)
             self.assertTrue( success == ovf.OK )
+            data_shape = (segment.n_cells[0], segment.n_cells[1], segment.n_cells[2], 3)
             data = np.zeros(data_shape, dtype='f')
+            print("data shape: ", data_shape)
             success = ovf_file.read_segment_data(0, segment, data)
             if success != ovf.OK:
                 print("read_segment_data failed: ", ovf_file.get_latest_message())
             print("first segment:  ", data[0,1,0,:])
             self.assertTrue( success == ovf.OK )
+
+            success = ovf_file.read_segment_header(1, segment)
+            if success != ovf.OK:
+                print("read_segment_header failed: ", ovf_file.get_latest_message())
+            self.assertTrue( success == ovf.OK )
+            data_shape = (segment.n_cells[0], segment.n_cells[1], segment.n_cells[2], 3)
+            data = np.zeros(data_shape, dtype='d')
             success = ovf_file.read_segment_data(1, segment, data)
             if success != ovf.OK:
                 print("read_segment_data failed: ", ovf_file.get_latest_message())
@@ -70,13 +82,8 @@ class TestState(unittest.TestCase):
 
 #########
 
-def suite():
-    suite = unittest.TestSuite()
-    suite.addTest(unittest.makeSuite(TestState))
-    return suite
 
 if __name__ == '__main__':
-    suite = suite()
-    runner = unittest.TextTestRunner()
-    success = runner.run(suite).wasSuccessful()
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestState)
+    success = unittest.TextTestRunner().run(suite).wasSuccessful()
     sys.exit(not success)

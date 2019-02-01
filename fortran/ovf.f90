@@ -12,10 +12,11 @@ integer, parameter  :: OVF_FORMAT_CSV  = -57
 
 type, bind(c) :: c_ovf_file
     type(c_ptr)     :: filename
+    integer(c_int)  :: version
     integer(c_int)  :: found
     integer(c_int)  :: is_ovf
     integer(c_int)  :: n_segments
-    type(c_ptr)     :: file_handle
+    type(c_ptr)     :: state
 end type c_ovf_file
 
 type, bind(c) :: c_ovf_segment
@@ -33,6 +34,7 @@ type, bind(c) :: c_ovf_segment
     integer(kind=c_int) :: n_cells(3)
     integer(kind=c_int) :: N
 
+    real(kind=c_float)  :: step_size(3)
     real(kind=c_float)  :: bounds_min(3)
     real(kind=c_float)  :: bounds_max(3)
 
@@ -41,15 +43,16 @@ type, bind(c) :: c_ovf_segment
 end type c_ovf_segment
 
 type :: ovf_segment
-    character(len=:), allocatable :: Title, Comment, ValueUnits, ValueLabels,  MeshType, MeshUnits
-    integer                       :: ValueDim, PointCount, N_Cells(3), N 
-    real(8)                       :: bounds_min(3), bounds_max(3), lattice_constant, bravais_vectors(3,3)
+    character(len=:), allocatable :: Title, Comment, ValueUnits, ValueLabels, MeshType, MeshUnits
+    integer                       :: ValueDim, PointCount, N_Cells(3), N
+    real(8)                       :: step_size(3), bounds_min(3), bounds_max(3), lattice_constant, bravais_vectors(3,3)
 contains
     procedure :: initialize       => initialize_segment
-end type ovf_segment 
+end type ovf_segment
 
 type :: ovf_file
     character(len=:), allocatable   :: filename
+    integer                         :: version
     logical                         :: found, is_ovf
     integer                         :: n_segments
     character(len=:), allocatable   :: latest_message
@@ -101,15 +104,38 @@ contains
     function get_c_ovf_segment(segment) result(c_segment)
         use, intrinsic :: iso_c_binding
         implicit none
-        type(ovf_segment), intent(in), target   :: segment
-        type(c_ovf_segment)                     :: c_segment
+        type(ovf_segment), intent(in), target       :: segment
+        type(c_ovf_segment)                         :: c_segment
+        character(len=:), allocatable, target, save :: tmp_title, tmp_comment
+        character(len=:), allocatable, target, save :: tmp_valueunits, tmp_valuelabels, tmp_meshtype, tmp_meshunits
 
-        c_segment%title      = c_loc(segment%Title)
-        c_segment%comment    = c_loc(segment%Comment)
-        c_segment%valueunits = c_loc(segment%ValueUnits)
-        c_segment%valuedim   = segment%ValueDim
-        c_segment%n_cells(:) = segment%n_cells(:)
-        c_segment%N          = product(segment%n_cells)
+        tmp_title       = segment%Title(:)       // C_NULL_CHAR
+        tmp_comment     = segment%Comment(:)     // C_NULL_CHAR
+        tmp_valueunits  = segment%ValueUnits(:)  // C_NULL_CHAR
+        tmp_valuelabels = segment%ValueLabels(:) // C_NULL_CHAR
+        tmp_meshtype    = segment%MeshType(:)    // C_NULL_CHAR
+        tmp_meshunits   = segment%MeshUnits(:)   // C_NULL_CHAR
+
+        c_segment%title       = c_loc(tmp_title)
+        c_segment%comment     = c_loc(tmp_comment)
+
+        c_segment%valuedim    = segment%ValueDim
+        c_segment%valueunits  = c_loc(tmp_valueunits)
+        c_segment%valuelabels = c_loc(tmp_valuelabels)
+        
+        c_segment%meshtype    = c_loc(tmp_meshtype)
+        c_segment%meshunits   = c_loc(tmp_meshunits)
+        c_segment%pointcount  = segment%PointCount
+
+        c_segment%n_cells(:)  = segment%n_cells(:)
+        c_segment%N           = product(segment%n_cells)
+
+        c_segment%step_size(:)  = segment%step_size(:)
+        c_segment%bounds_min(:) = segment%bounds_min(:)
+        c_segment%bounds_max(:) = segment%bounds_max(:)
+
+        c_segment%lattice_constant = segment%lattice_constant
+        c_segment%bravais_vectors(:,:) = segment%bravais_vectors(:,:)
     end function get_c_ovf_segment
 
 
@@ -120,18 +146,18 @@ contains
         type(c_ovf_segment), intent(in)    :: c_segment
         type(ovf_segment),   intent(inout) :: segment
 
-        segment%Title      = get_string(c_segment%title)
-        segment%Comment    = get_string(c_segment%comment)
+        segment%Title       = get_string(c_segment%title)
+        segment%Comment     = get_string(c_segment%comment)
 
         segment%ValueLabels = get_string(c_segment%valuelabels)
-        segment%ValueUnits = get_string(c_segment%valueunits)
-        segment%ValueDim   = c_segment%valuedim
+        segment%ValueUnits  = get_string(c_segment%valueunits)
+        segment%ValueDim    = c_segment%valuedim
 
-        segment%MeshUnits = get_string(c_segment%meshunits)
-        segment%MeshType = get_string(c_segment%meshtype)
+        segment%MeshUnits   = get_string(c_segment%meshunits)
+        segment%MeshType    = get_string(c_segment%meshtype)
 
-        segment%N_Cells(:) = c_segment%n_cells(:)
-        segment%N          = product(c_segment%n_cells)
+        segment%N_Cells(:)  = c_segment%n_cells(:)
+        segment%N           = product(c_segment%n_cells)
     end subroutine fill_ovf_segment
 
 
@@ -180,7 +206,7 @@ contains
 
         interface
             function ovf_open(filename) &
-                            bind ( C, name = "ovf_open" ) 
+                            bind ( C, name = "ovf_open" )
             use, intrinsic :: iso_c_binding
                 character(len=1,kind=c_char)    :: filename(*)
                 type(c_ptr)                     :: ovf_open
@@ -206,7 +232,7 @@ contains
 
         interface
             function ovf_segment_initialize() &
-                bind ( C, name = "ovf_segment_initialize" ) 
+                bind ( C, name = "ovf_segment_initialize" )
             use, intrinsic :: iso_c_binding
                 type(c_ptr) :: ovf_segment_initialize
             end function ovf_segment_initialize
@@ -238,7 +264,7 @@ contains
             use, intrinsic :: iso_c_binding
             Import :: c_ovf_file, c_ovf_segment
                 type(c_ptr), value              :: file
-                integer(kind=c_int), value      :: index 
+                integer(kind=c_int), value      :: index
                 type(c_ptr), value              :: segment
                 integer(kind=c_int)             :: success
             end function ovf_read_segment_header

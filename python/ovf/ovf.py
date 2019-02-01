@@ -1,4 +1,4 @@
-import ovflib
+from . import ovflib
 import ctypes
 import numpy as np
 
@@ -30,6 +30,7 @@ class ovf_segment(ctypes.Structure):
         ("pointcount",       ctypes.c_int),
         ("n_cells",          ctypes.c_int*3),
         ("N",                ctypes.c_int),
+        ("step_size",        ctypes.c_float*3),
         ("bounds_min",       ctypes.c_float*3),
         ("bounds_max",       ctypes.c_float*3),
         ("lattice_constant", ctypes.c_float),
@@ -37,22 +38,23 @@ class ovf_segment(ctypes.Structure):
     ]
 
     def __init__(self, title="", comment="", valuedim=1, valueunits="", valuelabels="", meshtype="", meshunits="",
-                bounds_min=[0.0, 0.0, 0.0], bounds_max=[0.0, 0.0, 0.0], lattice_constant=0.0,
+                step_size=[0.0, 0.0, 0.0], bounds_min=[0.0, 0.0, 0.0], bounds_max=[0.0, 0.0, 0.0], lattice_constant=0.0,
                 bravais_vectors=[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
                 pointcount=0, n_cells=[1,1,1]):
 
-        self.title       = title
-        self.comment     = comment
+        self.title       = title.encode('utf-8')
+        self.comment     = comment.encode('utf-8')
         self.valuedim    = valuedim
-        self.valueunits  = valueunits
-        self.valuelabels = valuelabels
-        self.meshtype    = meshtype
-        self.meshunits   = meshunits
+        self.valueunits  = valueunits.encode('utf-8')
+        self.valuelabels = valuelabels.encode('utf-8')
+        self.meshtype    = meshtype.encode('utf-8')
+        self.meshunits   = meshunits.encode('utf-8')
         self.pointcount  = pointcount
         for i in range(3):
             self.n_cells[i] = n_cells[i]
         self.N = n_cells[0]*n_cells[1]*n_cells[2]
         for i in range(3):
+            self.step_size[i]  = step_size[i]
             self.bounds_min[i] = bounds_min[i]
             self.bounds_max[i] = bounds_max[i]
             for j in range(3):
@@ -107,11 +109,12 @@ _ovf_latest_message.restype  = ctypes.c_char_p
 class _ovf_file(ctypes.Structure):
     ### Some properties
     _fields_ = [
-        ("filename",     ctypes.c_char_p),
-        ("found",        ctypes.c_bool),
-        ("is_ovf",       ctypes.c_bool),
-        ("n_segments",   ctypes.c_int),
-        ("_file_handle", ctypes.c_void_p)
+        ("file_name",  ctypes.c_char_p),
+        ("version",    ctypes.c_int),
+        ("found",      ctypes.c_bool),
+        ("is_ovf",     ctypes.c_bool),
+        ("n_segments", ctypes.c_int),
+        ("_state",     ctypes.c_void_p)
     ]
 
     def read_segment_header(self, index, segment):
@@ -127,7 +130,7 @@ class _ovf_file(ctypes.Structure):
         else:
             print("ovf.py read_segment_data: not able to use data type ", data.dtype)
 
-    def write_segment(self, segment, data, fileformat=-56):
+    def write_segment(self, segment, data, fileformat=FILEFORMAT_TEXT):
         if data.dtype == np.dtype('f'):
             datap = data.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
             return int(_ovf_write_segment_4(ctypes.addressof(self), ctypes.pointer(segment), datap, fileformat))
@@ -137,7 +140,7 @@ class _ovf_file(ctypes.Structure):
         else:
             print("ovf.py read_segment_data: not able to use data type ", data.dtype)
 
-    def append_segment(self, segment, data, fileformat=-56):
+    def append_segment(self, segment, data, fileformat=FILEFORMAT_TEXT):
         if data.dtype == np.dtype('f'):
             datap = data.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
             return int(_ovf_append_segment_4(ctypes.addressof(self), ctypes.pointer(segment), datap, fileformat))
@@ -148,7 +151,7 @@ class _ovf_file(ctypes.Structure):
             print("ovf.py read_segment_data: not able to use data type ", data.dtype)
 
     def get_latest_message(self):
-        return str(_ovf_latest_message(ctypes.addressof(self)))
+        return _ovf_latest_message(ctypes.addressof(self)).decode('utf-8')
 
 
 ### Setup State
@@ -176,7 +179,9 @@ class ovf_file():
         self._p_file = open(filename)
 
     def __enter__(self):
-        return self._p_file.contents
+        if self._p_file:
+            return self._p_file.contents
+        raise RuntimeError('Was not able to create the OVF file object...')
 
     def __exit__(self, exc_type, exc_value, traceback):
         close(self._p_file)

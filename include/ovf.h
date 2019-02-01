@@ -46,6 +46,7 @@ struct ovf_segment {
     int n_cells[3];
     int N;
 
+    float step_size[3];
     float bounds_min[3];
     float bounds_max[3];
 
@@ -56,11 +57,14 @@ struct ovf_segment {
 };
 
 /* opaque handle which holds the file pointer */
-struct ovf_file_handle;
+struct parser_state;
 
 /* the main struct which keeps the info on the main header of a file */
 struct ovf_file {
-    const char * filename;
+    const char * file_name;
+
+    int version;
+
     /* file could be found */
     int found;
     /* file contains an ovf header */
@@ -69,7 +73,7 @@ struct ovf_file {
     int n_segments;
 
     /* then some "private" internal fields */
-    struct ovf_file_handle *_file_handle;
+    struct parser_state * _state;
 };
 
 /* opening a file will fill the struct and prepare everything for read/write */
