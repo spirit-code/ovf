@@ -367,16 +367,16 @@ int write_segment( ovf_file *file, const ovf_segment * segment, const T * vf,
                     bool write_header, const bool append = false, int format = OVF_FORMAT_BIN8 )
 try
 {
-    std::string output_to_file;
-    output_to_file.reserve( int( 0x08000000 ) );  // reserve 128[MByte]
-
-    // If we are not appending or the file does not exists we need to write the top header
-    // and to turn the file_exists attribute to true so we can append more segments
-    if ( !append || write_header )
+    if( file->_state->file_contents.size() > 0 && append )
     {
-        output_to_file += top_header_string();
-        file->n_segments = 0;
+        file->_state->file_contents.push_back("");
     }
+    else
+        file->_state->file_contents = {""};
+
+    int index = file->_state->file_contents.size()-1;
+    std::string & output_to_file = file->_state->file_contents[index];
+    output_to_file.reserve( int( 0x08000000 ) );  // reserve 128[MByte]
 
     output_to_file += fmt::format( empty_line );
     output_to_file += fmt::format( "# Begin: Segment\n" );
@@ -486,7 +486,18 @@ try
     if( append )
         Append_String_to_File( output_to_file, file->file_name );
     else
-        Strings_to_File({output_to_file}, file->file_name);
+    {
+        // If we are not appending or the file does not exists we need to write the top header
+        // and to turn the file_exists attribute to true so we can append more segments
+        if( write_header )
+        {
+            file->n_segments = 0;
+            file->version = 2;
+            Strings_to_File({top_header_string(), output_to_file}, file->file_name);
+        }
+        else
+            Strings_to_File({output_to_file}, file->file_name);
+    }
     file->found  = true;
     file->is_ovf = true;
 
