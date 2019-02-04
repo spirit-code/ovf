@@ -42,14 +42,21 @@ type, bind(c) :: c_ovf_segment
     real(kind=c_float)  :: bravais_vectors(3,3)
 end type c_ovf_segment
 
+! Wrapper used to handle C strings
+type :: ovf_string
+    character(len=:), allocatable :: contents
+end type ovf_string
+
+! Wrapper to handle ovf_segment C struct
 type :: ovf_segment
-    character(len=:), allocatable :: Title, Comment, ValueUnits, ValueLabels, MeshType, MeshUnits
+    type(ovf_string) :: Title, Comment, ValueUnits, ValueLabels, MeshType, MeshUnits
     integer                       :: ValueDim, PointCount, N_Cells(3), N
     real(8)                       :: step_size(3), bounds_min(3), bounds_max(3), lattice_constant, bravais_vectors(3,3)
 contains
     procedure :: initialize       => initialize_segment
 end type ovf_segment
 
+! Wrapper to handle ovf_file C struct
 type :: ovf_file
     character(len=:), allocatable   :: filename
     integer                         :: version
@@ -73,7 +80,19 @@ contains
     procedure :: close_file          => close_file
 end type ovf_file
 
+! ovf_string assignment overloads
+public :: assignment (=)
+interface assignment (=)
+    module procedure ovf_string_assign_from
+    module procedure ovf_string_assign_from2
+    module procedure ovf_string_assign_to
+    module procedure ovf_string_assign_to2
+end interface
+
 contains
+
+    !----------------------------------------------
+    !----- Functions to deal with C strings
 
     ! Helper function to generate a Fortran string from a C char pointer
     function get_string(c_pointer) result(f_string)
@@ -99,6 +118,44 @@ contains
         f_string = f_ptr(1:l_str)
     end function get_string
 
+    ! Assign from C string wrapper to Fortran string
+    subroutine ovf_string_assign_from(str_assign, str_in)
+      implicit none
+      character(len=:), allocatable, intent(out) :: str_assign
+      type(ovf_string), target, intent(in) :: str_in
+      str_assign = get_string(c_loc(str_in%contents))
+    end subroutine ovf_string_assign_from
+
+    ! Assign from C string wrapper to pointer to C string
+    subroutine ovf_string_assign_from2(str_assign, str_in)
+      implicit none
+      type(c_ptr), intent(out) :: str_assign
+      type(ovf_string), target, intent(in) :: str_in
+      str_assign = c_loc(str_in%contents)
+    end subroutine ovf_string_assign_from2
+
+    ! Assign from pointer to C string to C string wrapper
+    subroutine ovf_string_assign_to(str_assign, str_in)
+      implicit none
+      type(ovf_string), intent(out) :: str_assign
+      type(c_ptr), intent(in) :: str_in
+      str_assign%contents = get_string(str_in) // C_NULL_CHAR
+    end subroutine ovf_string_assign_to
+
+    ! Assign from Fortran string to C string wrapper
+    subroutine ovf_string_assign_to2(str_assign, str_in)
+      implicit none
+      type(ovf_string), intent(out) :: str_assign
+      character(len=*), intent(in) :: str_in
+      str_assign%contents = str_in // C_NULL_CHAR
+    end subroutine ovf_string_assign_to2
+
+    ! Create C string wrapper from initialisation
+    type(ovf_string) function ovf_string_init(input)
+        character(len=:), allocatable, intent(in) ::  input
+        ovf_string_init%contents = input
+    end function ovf_string_init
+    !----------------------------------------------
 
     ! Helper function to create C-struct c_ovf_secment from Fortran type ovf_segment
     function get_c_ovf_segment(segment) result(c_segment)
@@ -106,25 +163,16 @@ contains
         implicit none
         type(ovf_segment), intent(in), target       :: segment
         type(c_ovf_segment)                         :: c_segment
-        character(len=:), allocatable, target, save :: tmp_title, tmp_comment
-        character(len=:), allocatable, target, save :: tmp_valueunits, tmp_valuelabels, tmp_meshtype, tmp_meshunits
 
-        tmp_title       = segment%Title(:)       // C_NULL_CHAR
-        tmp_comment     = segment%Comment(:)     // C_NULL_CHAR
-        tmp_valueunits  = segment%ValueUnits(:)  // C_NULL_CHAR
-        tmp_valuelabels = segment%ValueLabels(:) // C_NULL_CHAR
-        tmp_meshtype    = segment%MeshType(:)    // C_NULL_CHAR
-        tmp_meshunits   = segment%MeshUnits(:)   // C_NULL_CHAR
-
-        c_segment%title       = c_loc(tmp_title)
-        c_segment%comment     = c_loc(tmp_comment)
+        c_segment%title       = segment%Title
+        c_segment%comment     = segment%Comment
 
         c_segment%valuedim    = segment%ValueDim
-        c_segment%valueunits  = c_loc(tmp_valueunits)
-        c_segment%valuelabels = c_loc(tmp_valuelabels)
+        c_segment%valueunits  = segment%ValueUnits
+        c_segment%valuelabels = segment%ValueLabels
         
-        c_segment%meshtype    = c_loc(tmp_meshtype)
-        c_segment%meshunits   = c_loc(tmp_meshunits)
+        c_segment%meshtype    = segment%MeshType
+        c_segment%meshunits   = segment%MeshUnits
         c_segment%pointcount  = segment%PointCount
 
         c_segment%n_cells(:)  = segment%n_cells(:)
@@ -146,15 +194,15 @@ contains
         type(c_ovf_segment), intent(in)    :: c_segment
         type(ovf_segment),   intent(inout) :: segment
 
-        segment%Title       = get_string(c_segment%title)
-        segment%Comment     = get_string(c_segment%comment)
+        segment%Title       = c_segment%title
+        segment%Comment     = c_segment%comment
 
-        segment%ValueLabels = get_string(c_segment%valuelabels)
-        segment%ValueUnits  = get_string(c_segment%valueunits)
+        segment%ValueLabels = c_segment%valuelabels
+        segment%ValueUnits  = c_segment%valueunits
         segment%ValueDim    = c_segment%valuedim
 
-        segment%MeshUnits   = get_string(c_segment%meshunits)
-        segment%MeshType    = get_string(c_segment%meshtype)
+        segment%MeshUnits   = c_segment%meshunits
+        segment%MeshType    = c_segment%meshtype
 
         segment%N_Cells(:)  = c_segment%n_cells(:)
         segment%N           = product(c_segment%n_cells)
