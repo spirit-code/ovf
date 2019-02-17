@@ -2,9 +2,14 @@ OVF Parser Library
 =================================
 **Simple API for powerful OOMMF Vector Field file parsing**<br />
 
+
 [OVF format specification](https://math.nist.gov/oommf/doc/userguide20a0/userguide/Vector_Field_File_Format_OV.html)
 
+[![Build Status](https://travis-ci.org/spirit-code/ovf.svg?branch=master)](https://travis-ci.org/spirit-code/ovf)
+[![Build status](https://ci.appveyor.com/api/projects/status/ur0cq1tykfndlj06/branch/master?svg=true)](https://ci.appveyor.com/project/GPMueller/ovf)
+
 **[Python package](https://pypi.org/project/ovf/):** [![PyPI version](https://badge.fury.io/py/ovf.svg)](https://badge.fury.io/py/ovf)
+
 
 How to use
 ---------------------------------
@@ -12,8 +17,9 @@ How to use
 For usage examples, take a look into the test folders: [test](https://github.com/spirit-code/ovf/tree/master/test), [python/test](https://github.com/spirit-code/ovf/tree/master/python/test) or [fortran/test](https://github.com/spirit-code/ovf/tree/master/fortran/test).
 
 Except for opening a file or initializing a segment, all functions return status codes
-(generally `OVF_OK` or `OVF_ERROR`). When the return code is not `OVF_OK`, you can take
-a look into the latest message, which should tell you what the problem was
+(generally `OVF_OK`, `OVF_INVALID` or `OVF_ERROR`).
+When the return code is not `OVF_OK`, you can take a look into the latest message,
+which should tell you what the problem was
 (`const char * ovf_latest_message(struct ovf_file *)` in the C API).
 
 In C/C++ and Fortran, before writing a segment, make sure the `ovf_segment` you pass in is
