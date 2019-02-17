@@ -1,8 +1,13 @@
 #pragma once
-#ifndef DETAIL_HELPERS_H
-#define DETAIL_HELPERS_H
+#ifndef LIBOVF_DETAIL_HELPERS_H
+#define LIBOVF_DETAIL_HELPERS_H
 
 #include <cstdint>
+
+namespace ovf
+{
+namespace detail
+{
 
 // Test values for 4bit and 8bit binary data
 namespace check
@@ -65,6 +70,8 @@ namespace endian
         bytes[6] = in >> 48;
         bytes[7] = in >> 56;
     }
+}
+}
 }
 
 #endif

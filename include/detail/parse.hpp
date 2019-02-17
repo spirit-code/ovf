@@ -1,6 +1,6 @@
 #pragma once
-#ifndef PARSE_H
-#define PARSE_H
+#ifndef LIBOVF_DETAIL_PARSE_H
+#define LIBOVF_DETAIL_PARSE_H
 
 #include "ovf.h"
 #include <detail/parse_rules.hpp>
@@ -14,6 +14,10 @@
 #include <fstream>
 #include <iostream>
 
+namespace ovf
+{
+namespace detail
+{
 namespace parse
 {
     /*
@@ -135,7 +139,7 @@ namespace parse
 
 
     // Reads in the header info into a given segment
-    inline int read_segment_header(ovf_file & file, int index, ovf_segment & segment)
+    inline int segment_header(ovf_file & file, int index, ovf_segment & segment)
     try
     {
         pegtl::memory_input<> in( file._state->file_contents[index], "" );
@@ -149,14 +153,14 @@ namespace parse
         {
             // TODO...
             file._state->message_latest = fmt::format(
-                "libovf read_segment_header: OVF version \'{}\' in file \'{}\' is not supported...",
+                "libovf segment_header: OVF version \'{}\' in file \'{}\' is not supported...",
                 file.file_name, file.version);
             return OVF_INVALID;
         }
         else
         {
             file._state->message_latest = fmt::format(
-                "libovf read_segment_header: OVF version \'{}\' in file \'{}\' is not supported...",
+                "libovf segment_header: OVF version \'{}\' in file \'{}\' is not supported...",
                 file.file_name, file.version);
             return OVF_INVALID;
         }
@@ -165,7 +169,7 @@ namespace parse
             return OVF_OK;
         else
         {
-            file._state->message_latest = "libovf read_segment_header: no success in parsing";
+            file._state->message_latest = "libovf segment_header: no success in parsing";
             std::cerr << file._state->file_contents[index] << std::endl;
             return OVF_INVALID;
         }
@@ -173,24 +177,24 @@ namespace parse
     catch( pegtl::parse_error err )
     {
         file._state->message_latest = fmt::format(
-            "libovf read_segment_header: pegtl parse error \'{}\'", + err.what());
+            "libovf segment_header: pegtl parse error \'{}\'", + err.what());
         return OVF_ERROR;
     }
     catch( std::exception ex )
     {
         file._state->message_latest = fmt::format(
-            "libovf read_segment_header: std::exception \'{}\'", + ex.what());
+            "libovf segment_header: std::exception \'{}\'", + ex.what());
         return OVF_ERROR;
     }
     catch( ... )
     {
-        file._state->message_latest = "libovf read_segment_header: unknown exception";
+        file._state->message_latest = "libovf segment_header: unknown exception";
         return OVF_ERROR;
     }
 
     // // Reads the data of a segment into a given data array (float)
     template<typename scalar>
-    int read_segment_data(ovf_file & file, int index, const ovf_segment & segment, scalar * data)
+    int segment_data(ovf_file & file, int index, const ovf_segment & segment, scalar * data)
     try
     {
         pegtl::memory_input<> in( file._state->file_contents[index], "" );
@@ -207,14 +211,14 @@ namespace parse
         {
             // TODO...
             file._state->message_latest = fmt::format(
-                "libovf read_segment_data: OVF version \'{}\' in file \'{}\' is not supported...",
+                "libovf segment_data: OVF version \'{}\' in file \'{}\' is not supported...",
                 file.file_name, file.version);
             return OVF_INVALID;
         }
         else
         {
             file._state->message_latest = fmt::format(
-                "libovf read_segment_data: OVF version \'{}\' in file \'{}\' is not supported...",
+                "libovf segment_data: OVF version \'{}\' in file \'{}\' is not supported...",
                 file.file_name, file.version);
             return OVF_INVALID;
         }
@@ -225,39 +229,29 @@ namespace parse
         }
         else
         {
-            file._state->message_latest = "libovf read_segment_data: no success in parsing";
+            file._state->message_latest = "libovf segment_data: no success in parsing";
             return OVF_INVALID;
         }
     }
     catch( pegtl::parse_error err )
     {
         file._state->message_latest = fmt::format(
-            "libovf read_segment_data: pegtl parse error \'{}\'", + err.what());
+            "libovf segment_data: pegtl parse error \'{}\'", + err.what());
         return OVF_ERROR;
     }
     catch( std::exception ex )
     {
         file._state->message_latest = fmt::format(
-            "libovf read_segment_data: std::exception \'{}\'", + ex.what());
+            "libovf segment_data: std::exception \'{}\'", + ex.what());
         return OVF_ERROR;
     }
     catch( ... )
     {
-        file._state->message_latest = "libovf read_segment_data: unknown exception";
+        file._state->message_latest = "libovf segment_data: unknown exception";
         return OVF_ERROR;
     }
-
-    // // Reads the data of a segment into a given data array (float)
-    // inline int read_segment_data(ovf_file & file, int index, const ovf_segment & segment, float * data)
-    // {
-    //     return read_segment_data_template(file, index, segment, data);
-    // }
-
-    // // Reads the data of a segment into a given data array (double)
-    // inline int read_segment_data(ovf_file & file, int index, const ovf_segment & segment, double * data)
-    // {
-    //     return read_segment_data_template(file, index, segment, data);
-    // }
+}
+}
 }
 
 #endif

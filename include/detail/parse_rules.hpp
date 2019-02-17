@@ -1,6 +1,6 @@
 #pragma once
-#ifndef PARSE_RULES_H
-#define PARSE_RULES_H
+#ifndef LIBOVF_DETAIL_PARSE_RULES_H
+#define LIBOVF_DETAIL_PARSE_RULES_H
 
 #include "ovf.h"
 #include <detail/helpers.hpp>
@@ -8,8 +8,6 @@
 #include <tao/pegtl.hpp>
 
 #include <array>
-
-namespace pegtl = tao::pegtl;
 
 struct parser_state
 {
@@ -33,8 +31,14 @@ struct parser_state
     std::ios::pos_type n_segments_pos = 0;
 };
 
+namespace ovf
+{
+namespace detail
+{
 namespace parse
 {
+    namespace pegtl = tao::pegtl;
+
     // "# "
     struct prefix
         : pegtl::string< '#' >
@@ -958,5 +962,7 @@ namespace parse
     };
 
 } // namespace parse
+}
+}
 
 #endif
