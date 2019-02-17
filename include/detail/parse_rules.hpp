@@ -29,6 +29,8 @@ struct parser_state
 
     int tmp_idx=0;
     std::array<double, 3> tmp_vec3 = std::array<double, 3>{0,0,0};
+
+    std::ios::pos_type n_segments_pos = 0;
 };
 
 namespace parse
@@ -97,6 +99,7 @@ namespace parse
         static void apply( const Input& in, ovf_file & file )
         {
             file.n_segments = std::stoi(in.string());
+            file._state->n_segments_pos = in.position().byte;
         }
     };
 

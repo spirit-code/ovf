@@ -30,7 +30,6 @@ set( HEADER_FILES
     src/detail/parse.hpp
     src/detail/parse_rules.hpp
     src/detail/write.hpp
-    src/detail/Filter_File_Handle.hpp
 )
 
 if( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC" )

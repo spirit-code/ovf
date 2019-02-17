@@ -2,7 +2,6 @@
 #include <detail/helpers.hpp>
 #include <detail/parse.hpp>
 #include <detail/write.hpp>
-#include <detail/Filter_File_Handle.hpp>
 #include <fmt/format.h>
 
 struct ovf_file* ovf_open(const char *filename)

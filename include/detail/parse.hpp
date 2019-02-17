@@ -23,6 +23,39 @@ namespace parse
     */
     static const int n_segments_str_digits = 6;
 
+
+    /*
+    Parse the overall file header and locate the segment count, if present.
+    */
+    inline int file_header(ovf_file & file)
+    try
+    {
+        pegtl::file_input<> in( file.file_name );
+        bool success = pegtl::parse< ovf_file_header, ovf_file_action >( in, file );
+        if( success )
+            return OVF_OK;
+        else
+            return OVF_INVALID;
+    }
+    catch( pegtl::parse_error err )
+    {
+        file._state->message_latest = fmt::format(
+            "libovf initial: pegtl parse error \'{}\'", + err.what());
+        return OVF_ERROR;
+    }
+    catch( std::exception ex )
+    {
+        file._state->message_latest = fmt::format(
+            "libovf initial: std::exception \'{}\'", + ex.what());
+        return OVF_ERROR;
+    }
+    catch( ... )
+    {
+        file._state->message_latest = "libovf initial: unknown exception";
+        return OVF_ERROR;
+    }
+
+
     /*
     Read the overall file header and locate and count segments in the file
     (the segments are stored in memory!)

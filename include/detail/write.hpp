@@ -4,7 +4,6 @@
 
 #include "ovf.h"
 #include <detail/parse.hpp>
-#include <detail/Filter_File_Handle.hpp>
 
 #include <fmt/format.h>
 
@@ -23,19 +22,40 @@ static const std::string empty_line = "#\n";
 // This is needed so that, when appending, the file does not need to be overwritten
 static const int n_segments_str_digits = 6; // can store 1M modes
 
-// TODO: use Filter_File_Handle instead...
-inline void Strings_to_File(const std::vector<std::string> text, const std::string name, int no=-1)
+class file_handle
 {
+private:
     std::ofstream myfile;
-    myfile.open(name);
-    if (myfile.is_open())
+public:
+    file_handle(const std::string & filename, bool append);
+    ~file_handle();
+    void write(const std::vector<std::string> & text);
+    void append(const std::vector<std::string> & text);
+};
+
+inline file_handle::file_handle( const std::string & filename, bool append )
+{
+    if( append )
+        myfile.open(filename, std::ofstream::out | std::ofstream::app);
+    else
+        myfile.open(filename);
+}
+
+
+inline file_handle::~file_handle()
+{
+    myfile.close();
+}
+
+
+inline void file_handle::write(const std::vector<std::string> & text)
+{
+    if( myfile.is_open() )
     {
-        if (no < 0)
-            no = text.size();
         // Log(Log_Level::Debug, Log_Sender::All, "Started writing " + name);
-        for (int i = 0; i < no; ++i) {
+        for (int i = 0; i < text.size(); ++i)
             myfile << text[i];
-        }
+
         myfile.close();
         // Log(Log_Level::Debug, Log_Sender::All, "Finished writing " + name);
     }
@@ -45,22 +65,6 @@ inline void Strings_to_File(const std::vector<std::string> text, const std::stri
     }
 }
 
-inline void Append_String_to_File(const std::string text, const std::string name)
-{
-    std::ofstream myfile;
-    myfile.open(name, std::ofstream::out | std::ofstream::app);
-    if (myfile.is_open())
-    {
-        // Log(Log_Level::Debug, Log_Sender::All, "Started writing " + name);
-        myfile << text;
-        myfile.close();
-        // Log(Log_Level::Debug, Log_Sender::All, "Finished writing " + name);
-    }
-    else
-    {
-        // Log(Log_Level::Error, Log_Sender::All, "Could not open " + name + " to append to file");
-    }
-}
 
 inline std::string top_header_string()
 {
@@ -75,10 +79,11 @@ inline std::string top_header_string()
     return ret;
 }
 
+
 inline int increment_n_segments(ovf_file *file)
 try
 {
-    std::fstream filestream( file->file_name );
+    parse::file_header(*file);
 
     // Update n_segments
     file->n_segments++;
@@ -86,31 +91,13 @@ try
     // Convert updated n_segment into padded string
     std::string new_n_str = std::to_string( file->n_segments );
     std::string::size_type new_n_len = new_n_str.length();
-
     std::string::size_type padding_len = n_segments_str_digits - new_n_len;
     std::string padding( padding_len, '0' );
 
-    // n_segments_pos is the end of the line that contains '#segment count' (after '\n')
-    std::ios::off_type offset = n_segments_str_digits + 1;
-
-    auto ifile = std::unique_ptr<Filter_File_Handle>(
-                        new Filter_File_Handle( file->file_name, comment_tag ) );
-    // Get the number of segment as string
-    int n_segments;
-    ifile->Require_Single( n_segments, "# segment count:" );
-    std::string n_segments_as_str;
-    ifile->Read_String( n_segments_as_str, "# segment count:" );
-    // Save the file position indicator as we have to increment n_segment
-    std::ios::pos_type n_segments_pos = ifile->GetPosition();
-
-
-    // Go to the beginning '#segment count' value position
-    filestream.seekg( n_segments_pos );
-    filestream.seekg( (-1)*offset, std::ios::cur );
-
-    // replace n_segments value in the stream
+    // Replace n_segments value in the stream
+    std::fstream filestream( file->file_name );
+    filestream.seekg( file->_state->n_segments_pos );
     filestream << ( padding + new_n_str );
-
     filestream.close();
 
     return OVF_OK;
@@ -121,16 +108,11 @@ catch( ... )
     return OVF_ERROR;
 }
 
+
 template <typename T>
 void append_data_bin_to_string( std::string & output_to_file, const T * vf, int n_cols, int n_rows, int format)
 try
 {
-    // float test value
-    // const float ref_4b = *reinterpret_cast<const float *>( &check::val_4b );
-
-    // double test value
-    // const double ref_8b = *reinterpret_cast<const double *>( &check::val_4b );
-
     if( format == OVF_FORMAT_BIN8 )
     {
         auto out_check = std::vector<uint8_t>(8);
@@ -148,21 +130,6 @@ try
                 uint64_t in = *reinterpret_cast<uint64_t*>(&val);
 
                 endian::to_little_64(in, &out[j*8]);
-
-                // // buffer[j] = static_cast<double>(vf[n_cols*i + j]);
-                // double val = static_cast<double>(vf[n_cols*i + j]);
-                // // *reinterpret_cast<float*>( &val );
-                // uint64_t in = *reinterpret_cast<uint64_t*>(&val);
-                // // uint8_t out[8];
-
-                // out[8*j + 0] = in >> 0;
-                // out[8*j + 1] = in >> 8;
-                // out[8*j + 2] = in >> 16;
-                // out[8*j + 3] = in >> 24;
-                // out[8*j + 4] = in >> 32;
-                // out[8*j + 5] = in >> 40;
-                // out[8*j + 6] = in >> 48;
-                // out[8*j + 7] = in >> 56;
             }
             output_to_file +=
                 std::string( reinterpret_cast<char *>(out.data()), n_cols*sizeof(double) );
@@ -184,12 +151,7 @@ try
                 float val = static_cast<float>(vf[n_cols*i + j]);
                 uint32_t in = *reinterpret_cast<uint32_t*>(&val);
 
-                // endian::to_little_32(in, &out[j*4]);
-
-                out[4*j + 0] = in >> 0;
-                out[4*j + 1] = in >> 8;
-                out[4*j + 2] = in >> 16;
-                out[4*j + 3] = in >> 24;
+                endian::to_little_32(in, &out[j*4]);
             }
             output_to_file +=
                 std::string( reinterpret_cast<char *>(out.data()), n_cols*sizeof(float) );
@@ -227,9 +189,7 @@ int write_segment( ovf_file *file, const ovf_segment * segment, const T * vf,
 try
 {
     if( file->_state->file_contents.size() > 0 && append )
-    {
         file->_state->file_contents.push_back("");
-    }
     else
         file->_state->file_contents = {""};
 
@@ -343,19 +303,24 @@ try
 
     // Append the #End keywords
     if( append )
-        Append_String_to_File( output_to_file, file->file_name );
+    {
+        file_handle handle(file->file_name, true);
+        handle.write( {output_to_file} );
+    }
     else
     {
+        file_handle handle(file->file_name, false);
+
         // If we are not appending or the file does not exists we need to write the top header
         // and to turn the file_exists attribute to true so we can append more segments
         if( write_header )
         {
             file->n_segments = 0;
             file->version = 2;
-            Strings_to_File({top_header_string(), output_to_file}, file->file_name);
+            handle.write({top_header_string(), output_to_file});
         }
         else
-            Strings_to_File({output_to_file}, file->file_name);
+            handle.write({output_to_file});
     }
     file->found  = true;
     file->is_ovf = true;
