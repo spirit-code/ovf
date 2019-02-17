@@ -3,7 +3,6 @@
 #define PARSE_H
 
 #include "ovf.h"
-#include "Filter_File_Handle.hpp"
 
 #include <string>
 #include <vector>
@@ -32,10 +31,6 @@ struct parser_state
 
 namespace parse
 {
-    // Test values for 4bit and 8bit binary data
-    static const uint32_t test_hex_4b = 0x4996B438;
-    static const uint64_t test_hex_8b = 0x42DC12218377DE40;
-
     /*
     The number of zero-padding for segment count.
     This is needed so that, when appending, the file does not need to be overwritten.

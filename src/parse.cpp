@@ -1,8 +1,9 @@
 #include <detail/parse.hpp>
-#include <detail/Helpers.hpp>
+#include <detail/helpers.hpp>
 
 #include <vector>
 #include <array>
+#include <iostream>
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
@@ -49,14 +50,12 @@ namespace parse
         : pegtl::must<
             version,
             pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
-            segment_count>//,
-            // pegtl::until<pegtl::eof> >
+            segment_count>
     {};
 
     //////////////////////////
 
-    // Class template for user-defined actions that does
-    // nothing by default.
+    // Class template for user-defined actions that does nothing by default.
     template< typename Rule >
     struct ovf_file_action
         : pegtl::nothing< Rule >
@@ -160,7 +159,12 @@ namespace parse
             : pegtl::if_then_else<
                 pegtl::one< '.' >,
                 pegtl::plus< D >,
-                pegtl::seq< pegtl::plus< D >, pegtl::one< '.' >, pegtl::star< D > > >
+                pegtl::seq<
+                    pegtl::plus< D >,
+                    pegtl::opt< pegtl::one< '.' > >,
+                    pegtl::star< D >
+                >
+            >
         {};
 
         struct exponent
@@ -171,7 +175,7 @@ namespace parse
 
         struct decimal_number
             : pegtl::seq<
-                pegtl::sor< basic_number< pegtl::digit >, pegtl::plus<pegtl::digit> >,
+                basic_number< pegtl::digit >,
                 pegtl::opt< pegtl::one< 'e', 'E' >, exponent > >
         {};
 
@@ -208,13 +212,25 @@ namespace parse
         struct line_data_txt
             : pegtl::plus< pegtl::pad< segment_data_float, pegtl::blank > >
         {};
-
         struct line_data_csv
             : pegtl::seq<
-                pegtl::pad< segment_data_float, pegtl::blank >,
-                pegtl::star< pegtl::string<','>, pegtl::pad< segment_data_float, pegtl::blank > >,
-                pegtl::opt<pegtl::string<','>>
+                pegtl::list< pegtl::pad<segment_data_float, pegtl::blank>, pegtl::one<','> >,
+                pegtl::opt< pegtl::pad< pegtl::one<','>, pegtl::blank > >
                 >
+        {};
+
+        struct bin_4_check_value
+            : tao::pegtl::uint32_le::any
+        {};
+        struct bin_4_value
+            : tao::pegtl::uint32_le::any
+        {};
+
+        struct bin_8_check_value
+            : tao::pegtl::uint64_le::any
+        {};
+        struct bin_8_value
+            : tao::pegtl::uint64_le::any
         {};
 
         //////////////////////////////////////////////
@@ -223,25 +239,13 @@ namespace parse
         struct vector3f
             : pegtl::rep< 3, pegtl::pad< vec_float_value, pegtl::blank > >
         {};
-        // // Vector3 of unsigned int
-        // struct vector3ui
-        //     : pegtl::rep< 3, pegtl::pad< pegtl::digit, pegtl::blank > >
-        // {};
-        // // A sequence of alphanumerics without whitespace
-        // struct label
-        //     : pegtl:plus<pegtl::alpha>>
-        // {};
 
-        // struct MYEOL
-        //     : pegtl::sor< pegtl::seq<pegtl::star<pegtl::blank>,pegtl::eol> , pegtl::seq<pegtl::star<pegtl::blank>,pegtl::string<'#','#'>,pegtl::star<pegtl::any>,pegtl::eol> >
-        // {};
-
-        // this is how a line ends: either eol or the begin of a comment
+        // This is how a line ends: either eol or the begin of a comment
         struct line_end
             : pegtl::sor<pegtl::eol, pegtl::string<'#','#'>>
         {};
 
-        // this checks that the line end is met and moves up until eol
+        // This checks that the line end is met and moves up until eol
         struct finish_line
             : pegtl::seq<pegtl::at<line_end>, pegtl::until<pegtl::eol>>
         {};
@@ -249,8 +253,8 @@ namespace parse
         // Title
         struct title
             :  pegtl::until<pegtl::at< line_end >>
-            //pegtl::star<pegtl::any>// pegtl::seq<pegtl::star<pegtl::ascii::any>, pegtl::until<pegtl::eol>>
         {};
+
         // Description
         struct description
             : pegtl::until<pegtl::at< line_end >>
@@ -418,8 +422,7 @@ namespace parse
         {};
 
 
-        // Class template for user-defined actions that does
-        // nothing by default.
+        // Class template for user-defined actions that does nothing by default.
         template< typename Rule >
         struct ovf_segment_action
             : pegtl::nothing< Rule >
@@ -436,7 +439,7 @@ namespace parse
         };
 
 
-    //     //////////////////////////////////////////////
+        //////////////////////////////////////////////
 
         //
         struct segment_header
@@ -451,8 +454,7 @@ namespace parse
                 pegtl::until<pegtl::seq<end, TAO_PEGTL_ISTRING("Segment")>>, pegtl::eol >
         {};
 
-        // Class template for user-defined actions that does
-        // nothing by default.
+        // Class template for user-defined actions that does nothing by default.
         template< typename Rule >
         struct ovf_segment_header_action
             : pegtl::nothing< Rule >
@@ -706,35 +708,45 @@ namespace parse
 
         struct data_text
             : pegtl::seq<
-                pegtl::must<begin, TAO_PEGTL_ISTRING("Data Text"), pegtl::eol>,
+                begin, TAO_PEGTL_ISTRING("Data Text"), pegtl::eol,
                 pegtl::plus< line_data_txt, pegtl::eol >,
-                pegtl::must<end, TAO_PEGTL_ISTRING("Data Text"), pegtl::eol>
+                end, TAO_PEGTL_ISTRING("Data Text"), pegtl::eol
                 >
         {};
 
         struct data_csv
             : pegtl::seq<
-                pegtl::must<begin, TAO_PEGTL_ISTRING("Data CSV"), pegtl::eol>,
+                begin, TAO_PEGTL_ISTRING("Data CSV"), pegtl::eol,
                 pegtl::plus< line_data_csv, pegtl::eol >,
-                pegtl::must<end, TAO_PEGTL_ISTRING("Data CSV"), pegtl::eol>
-                >
-        {};
-
-        struct data_binary_8
-            : pegtl::seq<
-                pegtl::must<begin, TAO_PEGTL_ISTRING("Data Binary 8"), pegtl::eol>,
-                // TODO
-                // pegtl::plus< line_data_bin_8, pegtl::eol >,
-                pegtl::must<end, TAO_PEGTL_ISTRING("Data Binary 8"), pegtl::eol>
+                end, TAO_PEGTL_ISTRING("Data CSV"), pegtl::eol
                 >
         {};
 
         struct data_binary_4
             : pegtl::seq<
-                pegtl::must<begin, TAO_PEGTL_ISTRING("Data Binary 4"), pegtl::eol>,
+                begin, TAO_PEGTL_ISTRING("Data Binary 4"), pegtl::eol,
                 // TODO
                 // pegtl::plus< line_data_bin_4, pegtl::eol >,
-                pegtl::must<end, TAO_PEGTL_ISTRING("Data Binary 4"), pegtl::eol>
+                // pegtl::until<pegtl::seq<end, TAO_PEGTL_ISTRING("Data Binary 4")>>, pegtl::eol
+                bin_4_check_value,
+                // data_block_4,// pegtl::eol,
+                // pegtl::until< pegtl::eol, pegtl::plus<bin_4_value> >,
+                // pegtl::plus<pegtl::if_then_else< pegtl::not_at<pegtl::eol>, bin_4_value, pegtl::eol >>,
+                // pegtl::seq< pegtl::star< pegtl::not_at< pegtl::eol >, pegtl::not_at< pegtl::eof >, bin_4_value >, pegtl::eol >,
+                pegtl::until< pegtl::eol, bin_4_value >,
+                end, TAO_PEGTL_ISTRING("Data Binary 4"), pegtl::eol
+                >
+        {};
+
+        struct data_binary_8
+            : pegtl::seq<
+                begin, TAO_PEGTL_ISTRING("Data Binary 8"), pegtl::eol,
+                // TODO
+                // pegtl::plus< line_data_bin_8, pegtl::eol >,
+                // end, TAO_PEGTL_ISTRING("Data Binary 8"), pegtl::eol
+                bin_8_check_value,
+                pegtl::until< pegtl::eol, bin_8_value >,
+                end, TAO_PEGTL_ISTRING("Data Binary 8"), pegtl::eol
                 >
         {};
 
@@ -745,15 +757,14 @@ namespace parse
                 pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
                 header,
                 pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
-                pegtl::sor<data_text, data_csv, data_binary_8, data_binary_4>,
+                pegtl::sor< data_text, data_csv, data_binary_4, data_binary_8 >,
                 pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
                 pegtl::until<pegtl::seq<end, TAO_PEGTL_ISTRING("Segment")>>, pegtl::eol >
         {};
 
         ////////////////////////////////////
 
-        // Class template for user-defined actions that does
-        // nothing by default.
+        // Class template for user-defined actions that does nothing by default.
         template< typename Rule >
         struct ovf_segment_data_action
             : pegtl::nothing< Rule >
@@ -805,11 +816,110 @@ namespace parse
                 double value = std::stod(in.string());
 
                 int idx = col + row*n_cols;
+
                 data[idx] = value;
                 ++f._state->current_column;
             }
         };
 
+
+        template<>
+        struct ovf_segment_data_action< bin_4_check_value >
+        {
+            template< typename Input, typename scalar >
+            static void apply( const Input& in, ovf_file & f, const ovf_segment & segment, scalar * data )
+            {
+                std::string bytes = in.string();
+                uint32_t hex_4b = endian::from_little_32(reinterpret_cast<const uint8_t *>( bytes.c_str() ));
+
+                if ( hex_4b != check::val_4b )
+                    throw tao::pegtl::parse_error( "the expected binary check value could not be parsed!", in );
+            }
+        };
+
+        template<>
+        struct ovf_segment_data_action< bin_4_value >
+        {
+            template< typename Input, typename scalar >
+            static void apply( const Input& in, ovf_file & f, const ovf_segment & segment, scalar * data )
+            {
+                std::string bytes = in.string();
+                uint32_t ivalue = endian::from_little_32(reinterpret_cast<const uint8_t *>( bytes.c_str() ));
+                float value = *reinterpret_cast<const float *>( &ivalue );
+
+                int row = f._state->current_line;
+                int col = f._state->current_column;
+
+                int n_cols = segment.valuedim;
+
+                int idx = col + row*n_cols;
+
+                data[idx] = value;
+                ++f._state->current_column;
+            }
+        };
+
+        template<>
+        struct ovf_segment_data_action< bin_8_check_value >
+        {
+            template< typename Input, typename scalar >
+            static void apply( const Input& in, ovf_file & f, const ovf_segment & segment, scalar * data )
+            {
+                std::string bytes = in.string();
+                uint64_t hex_8b = endian::from_little_64(reinterpret_cast<const uint8_t *>( bytes.c_str() ));
+
+                if ( hex_8b != check::val_8b )
+                    throw tao::pegtl::parse_error( "the expected binary check value could not be parsed!", in );
+            }
+        };
+
+        template<>
+        struct ovf_segment_data_action< bin_8_value >
+        {
+            template< typename Input, typename scalar >
+            static void apply( const Input& in, ovf_file & f, const ovf_segment & segment, scalar * data )
+            {
+                std::string bytes = in.string();
+                uint64_t ivalue = endian::from_little_64(reinterpret_cast<const uint8_t *>( bytes.c_str() ));
+                double value = *reinterpret_cast<const double *>( &ivalue );
+
+                int row = f._state->current_line;
+                int col = f._state->current_column;
+
+                int n_cols = segment.valuedim;
+
+                int idx = col + row*n_cols;
+
+                data[idx] = value;
+                ++f._state->current_column;
+            }
+        };
+
+        template<>
+        struct ovf_segment_data_action< data_binary_4 >
+        {
+            template< typename Input, typename scalar >
+            static void apply( const Input& in, ovf_file & f, const ovf_segment & segment, scalar * data )
+            {
+                static_assert(
+                    !std::is_floating_point<scalar>::value ||
+                    (std::is_floating_point<scalar>::value && std::numeric_limits<scalar>::is_iec559),
+                    "Portable binary only supports IEEE 754 standardized floating point" );
+            }
+        };
+
+        template<>
+        struct ovf_segment_data_action< data_binary_8 >
+        {
+            template< typename Input, typename scalar >
+            static void apply( const Input& in, ovf_file & f, const ovf_segment & segment, scalar * data )
+            {
+                static_assert(
+                    !std::is_floating_point<scalar>::value ||
+                    (std::is_floating_point<scalar>::value && std::numeric_limits<scalar>::is_iec559),
+                    "Portable binary only supports IEEE 754 standardized floating point" );
+            }
+        };
     }; // namespace v2
 
     namespace v1
@@ -818,8 +928,7 @@ namespace parse
             : pegtl::star<pegtl::any>
         {};
 
-        // Class template for user-defined actions that does
-        // nothing by default.
+        // Class template for user-defined actions that does nothing by default.
         template< typename Rule >
         struct file_action
             : pegtl::nothing< Rule >
@@ -827,7 +936,6 @@ namespace parse
     };
 
 } // namespace parse
-
 
 
 namespace parse
@@ -905,30 +1013,6 @@ namespace parse
         return OVF_ERROR;
     }
 
-    // int get_segments(ovf_file & file)
-    // try
-    // {
-    //     pegtl::file_input<> in( file.file_name );
-    //     bool success = false;
-
-    // }
-    // catch( pegtl::parse_error err )
-    // {
-    //     std::cout << "get_segments: pegtl parse error \'" << err.what() << "\'" << std::endl;
-    //     return OVF_ERROR;
-    // }
-    // catch( std::exception ex )
-    // {
-    //     std::cout << "get_segments: exception \'" << ex.what() << "\'" << std::endl;
-    //     return OVF_ERROR;
-    // }
-    // catch( ... )
-    // {
-    //     std::cout << "get_segments: unknown exception" << std::endl;
-    //     return OVF_ERROR;
-    // }
-
-
     int read_segment_header(ovf_file & file, int index, ovf_segment & segment)
     try
     {
@@ -960,9 +1044,9 @@ namespace parse
         else
         {
             file._state->message_latest = "libovf read_segment_header: no success in parsing";
+            std::cerr << file._state->file_contents[index] << std::endl;
             return OVF_INVALID;
         }
-
     }
     catch( pegtl::parse_error err )
     {
@@ -981,7 +1065,6 @@ namespace parse
         file._state->message_latest = "libovf read_segment_header: unknown exception";
         return OVF_ERROR;
     }
-
 
     template<typename scalar>
     int read_segment_data_template(ovf_file & file, int index, const ovf_segment & segment, scalar * data)

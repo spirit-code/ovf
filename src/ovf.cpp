@@ -1,7 +1,8 @@
 #include "ovf.h"
-#include <detail/Filter_File_Handle.hpp>
-#include <detail/Helpers.hpp>
+#include <detail/helpers.hpp>
 #include <detail/parse.hpp>
+#include <detail/write.hpp>
+#include <detail/Filter_File_Handle.hpp>
 #include <fmt/format.h>
 
 struct ovf_file* ovf_open(const char *filename)
@@ -123,7 +124,6 @@ try
             index, ovf_file_ptr->n_segments, ovf_file_ptr->file_name);
         return OVF_ERROR;
     }
-
     int retcode = parse::read_segment_header( *ovf_file_ptr, index, *segment );
     if (retcode != OVF_OK)
         ovf_file_ptr->_state->message_latest += "\novf_read_segment_header failed.";

@@ -62,12 +62,6 @@ public:
     void Read_String( std::string& var, std::string keyword, bool log_notfound = true );
     // Count the words of a string
     int Count_Words( const std::string& str );
-    // Returns the number of lines which are not starting with a comment
-    int Get_N_Non_Comment_Lines();
-
-    // Stream a single variable
-    template <typename T>
-    void read( T * var, std::size_t n );
 
     // Read a single variable
     template <typename T>
@@ -83,12 +77,6 @@ public:
 };//end class FilterFileHandle
 
 // -----------------------------------------------------------------------------
-
-template <typename T>
-void Filter_File_Handle::read( T * var, std::size_t n )
-{
-    myfile.read( var, n );
-};
 
 // Reads a single variable into var, with optional logging in case of failure.
 //
@@ -338,13 +326,6 @@ inline int Filter_File_Handle::Count_Words( const std::string& phrase )
     int words = 0;
     while( phrase_stream >> dump ) ++words;
     return words;
-}
-
-inline int Filter_File_Handle::Get_N_Non_Comment_Lines()
-{
-    while( GetLine() ) { };
-    ResetLimits(); 
-    return ( this->n_lines - this->n_comment_lines );
 }
 
 #endif

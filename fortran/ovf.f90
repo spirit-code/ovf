@@ -49,11 +49,11 @@ end type ovf_string
 
 ! Wrapper to handle ovf_segment C struct
 type :: ovf_segment
-    type(ovf_string) :: Title, Comment, ValueUnits, ValueLabels, MeshType, MeshUnits
-    integer                       :: ValueDim, PointCount, N_Cells(3), N
-    real(8)                       :: step_size(3), bounds_min(3), bounds_max(3), lattice_constant, bravais_vectors(3,3)
+    type(ovf_string)        :: Title, Comment, ValueUnits, ValueLabels, MeshType, MeshUnits
+    integer                 :: ValueDim, PointCount, N_Cells(3), N
+    real(8)                 :: step_size(3), bounds_min(3), bounds_max(3), lattice_constant, bravais_vectors(3,3)
 contains
-    procedure :: initialize       => initialize_segment
+    procedure :: initialize => initialize_segment
 end type ovf_segment
 
 ! Wrapper to handle ovf_file C struct
@@ -101,8 +101,8 @@ contains
         type(c_ptr), intent(in)         :: c_pointer
         character(len=:), allocatable   :: f_string
 
-        character(len=:), pointer       :: f_ptr
         integer(c_size_t)               :: l_str
+        character(len=:), pointer       :: f_ptr
 
         interface
             function c_strlen(str_ptr) bind ( C, name = "strlen" ) result(len)
@@ -112,8 +112,8 @@ contains
             end function c_strlen
         end interface
 
-        call c_f_pointer(c_pointer, f_ptr)
         l_str = c_strlen(c_pointer)
+        call c_f_pointer(c_pointer, f_ptr)
 
         f_string = f_ptr(1:l_str)
     end function get_string
@@ -121,16 +121,16 @@ contains
     ! Assign from C string wrapper to Fortran string
     subroutine ovf_string_assign_from(str_assign, str_in)
       implicit none
-      character(len=:), allocatable, intent(out) :: str_assign
-      type(ovf_string), target, intent(in) :: str_in
+      character(len=:), allocatable, intent(out)    :: str_assign
+      type(ovf_string), target, intent(in)          :: str_in
       str_assign = get_string(c_loc(str_in%contents))
     end subroutine ovf_string_assign_from
 
     ! Assign from C string wrapper to pointer to C string
     subroutine ovf_string_assign_from2(str_assign, str_in)
       implicit none
-      type(c_ptr), intent(out) :: str_assign
-      type(ovf_string), target, intent(in) :: str_in
+      type(c_ptr), intent(out)              :: str_assign
+      type(ovf_string), target, intent(in)  :: str_in
       str_assign = c_loc(str_in%contents)
     end subroutine ovf_string_assign_from2
 
@@ -138,7 +138,7 @@ contains
     subroutine ovf_string_assign_to(str_assign, str_in)
       implicit none
       type(ovf_string), intent(out) :: str_assign
-      type(c_ptr), intent(in) :: str_in
+      type(c_ptr), intent(in)       :: str_in
       str_assign%contents = get_string(str_in) // C_NULL_CHAR
     end subroutine ovf_string_assign_to
 
@@ -146,7 +146,7 @@ contains
     subroutine ovf_string_assign_to2(str_assign, str_in)
       implicit none
       type(ovf_string), intent(out) :: str_assign
-      character(len=*), intent(in) :: str_in
+      character(len=*), intent(in)  :: str_in
       str_assign%contents = str_in // C_NULL_CHAR
     end subroutine ovf_string_assign_to2
 
@@ -161,8 +161,8 @@ contains
     function get_c_ovf_segment(segment) result(c_segment)
         use, intrinsic :: iso_c_binding
         implicit none
-        type(ovf_segment), intent(in), target       :: segment
-        type(c_ovf_segment)                         :: c_segment
+        type(ovf_segment), intent(in), target   :: segment
+        type(c_ovf_segment)                     :: c_segment
 
         c_segment%title       = segment%Title
         c_segment%comment     = segment%Comment
@@ -233,9 +233,9 @@ contains
 
     subroutine update(self)
         implicit none
-        class(ovf_file)                 :: self
+        class(ovf_file)             :: self
 
-        type(c_ovf_file), pointer       :: c_file
+        type(c_ovf_file), pointer   :: c_file
 
         call c_f_pointer(self%private_file_binding, c_file)
         self%found      = c_file%found  == 1
@@ -265,7 +265,7 @@ contains
         self%private_file_binding = c_file_ptr
 
         call c_f_pointer(self%private_file_binding, c_file)
-        self%filename   = get_string(c_file%filename)
+        self%filename = get_string(c_file%filename)
 
         call self%update()
     end subroutine open_file

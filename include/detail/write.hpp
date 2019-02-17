@@ -1,24 +1,17 @@
 #pragma once
-#ifndef DETAIL_OVFFILE_H
-#define DETAIL_OVFFILE_H
+#ifndef DETAIL_WRITE_H
+#define DETAIL_WRITE_H
 
 #include "ovf.h"
-#include "Filter_File_Handle.hpp"
-#include "parse.hpp"
-
-#include <string>
-#include <fstream>
-#include <cctype>
-#include <array>
-#include <vector>
+#include <detail/parse.hpp>
+#include <detail/Filter_File_Handle.hpp>
 
 #include <fmt/format.h>
-#include <fmt/ostream.h>
 
-
-// Test values for 4bit and 8bit binary data
-static const uint32_t test_hex_4b = 0x4996B438;
-static const uint64_t test_hex_8b = 0x42DC12218377DE40;
+#include <string>
+#include <vector>
+#include <fstream>
+#include <iostream>
 
 // Comment tag in OVF file header
 static const std::string comment_tag = "##";
@@ -29,158 +22,6 @@ static const std::string empty_line = "#\n";
 // The number of zero-padding for segment count.
 // This is needed so that, when appending, the file does not need to be overwritten
 static const int n_segments_str_digits = 6; // can store 1M modes
-
-
-
-// Read segment's data block
-template <typename T>
-int read_segment( const ovf_file * file, const ovf_segment * segment, int idx_seg, T * vf)
-try
-{
-    // // open the file
-    // auto ifile = std::shared_ptr<Filter_File_Handle>(
-    //     new Filter_File_Handle( file->file_name, comment_tag ) );
-
-    // Raw data representation
-    std::string datatype_tmp = "", datatype = "";
-    // ifile->Read_String( datatype_tmp, "# Begin: Data" );
-    std::istringstream repr( datatype_tmp );
-    repr >> datatype;
-    int binary_length = 0;
-    if( datatype == "binary" )
-        repr >> binary_length;
-
-
-    int i_datatype;
-    if( datatype == "binary" && binary_length == 8 )
-    {
-        i_datatype = OVF_FORMAT_BIN8;
-    }
-    else if( datatype == "binary" && binary_length == 4 )
-    {
-        i_datatype = OVF_FORMAT_BIN4;
-    }
-    else if( datatype == "text" )
-    {
-        i_datatype = OVF_FORMAT_TEXT;
-    }
-    else if( datatype == "csv" )
-    {
-        i_datatype = OVF_FORMAT_CSV;
-    }
-    else
-    {
-        file->_state->message_latest = fmt::format(
-            "read_segment failed for file \"{}\". Invalid data format {}", file->file_name, datatype );
-        return OVF_ERROR;
-    }
-
-    int n_cols = segment->valuedim;
-    int n_rows = segment->n_cells[0] * segment->n_cells[1] * segment->n_cells[2];
-
-    // Check if the initial check value of the binary data is valid
-    if( i_datatype == OVF_FORMAT_BIN8 )
-    {
-        const double ref_8b = *reinterpret_cast<const double *>( &test_hex_8b );
-        double read_8byte = 0;
-
-        // check the validity of the initial check value read with the reference one
-        // ifile->read( reinterpret_cast<char *>( &read_8byte ), sizeof(double) );
-        if ( read_8byte != ref_8b )
-        {
-            file->_state->message_latest = "OVF initial check value of binary data is inconsistent";
-            return OVF_ERROR;
-        }
-    }
-    else if( i_datatype == OVF_FORMAT_BIN4 )
-    {
-        const float ref_4b = *reinterpret_cast<const float *>( &test_hex_4b );
-        float read_4byte = 0;
-
-        // check the validity of the initial check value read with the reference one
-        // ifile->read( reinterpret_cast<char *>( &read_4byte ), sizeof(float) );
-        if ( read_4byte != ref_4b )
-        {
-            file->_state->message_latest = "OVF initial check value of binary data is inconsistent";
-            return OVF_ERROR;
-        }
-    }
-
-    // Check that we actually read in any data
-    if( n_cols*n_rows <= 0 )
-    {
-        file->_state->message_latest = fmt::format(
-            "read_segment not reading in any data, because n_cols*n_rows={}*{}<=0 for file \"{}\". You may want to check the segment you passed in.",
-            n_cols, n_rows, file->file_name);
-        return OVF_ERROR;
-    }
-
-    // // Read the data
-    // if( i_datatype == OVF_FORMAT_BIN8 )
-    //     return read_data_bin( ifile, n_cols, n_rows, 8,  vf );
-    // else if( i_datatype == OVF_FORMAT_BIN4 )
-    //     return read_data_bin( ifile, n_cols, n_rows, 4,  vf );
-    // else if( i_datatype == OVF_FORMAT_TEXT )
-    //     return read_data_txt( ifile, n_cols, n_rows, vf );
-    // else if( i_datatype == OVF_FORMAT_CSV )
-    //     return read_data_txt( ifile, n_cols, n_rows, vf, "," );
-    // else
-    // {
-    //     file->_state->message_latest = fmt::format(
-    //         "read_segment failed - invalid datatype \'{}\' for file \"{}\".", datatype, file->file_name);
-    //     return OVF_ERROR;
-    // }
-}
-catch( ... )
-{
-    file->_state->message_latest = fmt::format(
-        "read_segment failed for file \"{}\".", file->file_name);
-    return OVF_ERROR;
-}
-
-
-template <typename T>
-int read_data_bin( std::shared_ptr<Filter_File_Handle> ifile, int n_cols, int n_rows, int binary_length, T * vf )
-try
-{
-    // Set the input stream indicator to the end of the line describing the data block
-    ifile->iss.seekg( std::ios::end );
-
-    // Comparison of datum size compared to scalar type
-    if ( binary_length == 4 )
-    {
-        int vectorsize = 3 * sizeof(float);
-        std::vector<float> buffer(n_cols);
-        for( int row=0; row<n_rows; ++row )
-        {
-            ifile->read(reinterpret_cast<char *>(buffer.data()), vectorsize);
-
-            for (int col=0; col<n_cols; ++col)
-                vf[n_cols*row + col] = static_cast<T>(buffer[col]);
-        }
-    }
-    else if (binary_length == 8)
-    {
-        int vectorsize = n_cols * sizeof(double);
-        std::vector<double> buffer(n_cols);
-        for (int row=0; row<n_rows; row++)
-        {
-            ifile->read(reinterpret_cast<char *>(buffer.data()), vectorsize);
-
-            for (int col=0; col<n_cols; ++col)
-                vf[n_cols*row + col] = static_cast<T>(buffer[col]);
-        }
-    }
-    return OVF_OK;
-}
-catch (...)
-{
-    // file->_file_handle->message_latest = fmt::format("read_data_bin failed for file \"{}\".", file->file_name);
-    return OVF_ERROR;
-}
-
-
-
 
 // TODO: use Filter_File_Handle instead...
 inline void Strings_to_File(const std::vector<std::string> text, const std::string name, int no=-1)
@@ -285,59 +126,77 @@ void append_data_bin_to_string( std::string & output_to_file, const T * vf, int 
 try
 {
     // float test value
-    const float ref_4b = *reinterpret_cast<const float *>( &test_hex_4b );
+    // const float ref_4b = *reinterpret_cast<const float *>( &check::val_4b );
 
     // double test value
-    const double ref_8b = *reinterpret_cast<const double *>( &test_hex_8b );
+    // const double ref_8b = *reinterpret_cast<const double *>( &check::val_4b );
 
     if( format == OVF_FORMAT_BIN8 )
     {
-        output_to_file +=
-            std::string( reinterpret_cast<const char *>(&ref_8b), sizeof(double) );
+        auto out_check = std::vector<uint8_t>(8);
+        endian::to_little_64(check::val_8b, out_check.data());
 
-        // in case that T is 4bytes long
-        if (sizeof(T) == sizeof(float))
+        output_to_file +=
+            std::string( reinterpret_cast<const char *>(out_check.data()), sizeof(double) );
+
+        std::vector<uint8_t> out(n_cols*8);
+        for (unsigned int i=0; i<n_rows; ++i)
         {
-            std::vector<double> buffer(n_cols);
-            for (unsigned int i=0; i<n_rows; ++i)
+            for (int j=0; j<n_cols; ++j)
             {
-                for (int j=0; j<n_cols; ++j)
-                    buffer[j] = static_cast<double>(vf[n_cols*i + j]);
-                output_to_file +=
-                    std::string( reinterpret_cast<char *>(buffer.data()), n_cols*sizeof(double) );
+                double val = static_cast<double>(vf[n_cols*i + j]);
+                uint64_t in = *reinterpret_cast<uint64_t*>(&val);
+
+                endian::to_little_64(in, &out[j*8]);
+
+                // // buffer[j] = static_cast<double>(vf[n_cols*i + j]);
+                // double val = static_cast<double>(vf[n_cols*i + j]);
+                // // *reinterpret_cast<float*>( &val );
+                // uint64_t in = *reinterpret_cast<uint64_t*>(&val);
+                // // uint8_t out[8];
+
+                // out[8*j + 0] = in >> 0;
+                // out[8*j + 1] = in >> 8;
+                // out[8*j + 2] = in >> 16;
+                // out[8*j + 3] = in >> 24;
+                // out[8*j + 4] = in >> 32;
+                // out[8*j + 5] = in >> 40;
+                // out[8*j + 6] = in >> 48;
+                // out[8*j + 7] = in >> 56;
             }
-        }
-        else
-        {
-            for (unsigned int i=0; i<n_rows; i++)
-                output_to_file +=
-                    std::string( reinterpret_cast<const char *>(&vf[i]), n_cols*sizeof(double) );
+            output_to_file +=
+                std::string( reinterpret_cast<char *>(out.data()), n_cols*sizeof(double) );
         }
     }
     else if( format == OVF_FORMAT_BIN4 )
     {
-        output_to_file +=
-            std::string( reinterpret_cast<const char *>(&ref_4b), sizeof(float) );
+        auto out_check = std::vector<uint8_t>(4);
+        endian::to_little_32(check::val_4b, out_check.data());
 
-        // in case that T is 8bytes long
-        if (sizeof(T) == sizeof(double))
+        output_to_file +=
+            std::string( reinterpret_cast<const char *>(out_check.data()), sizeof(float) );
+
+        std::vector<uint8_t> out(n_cols*4);
+        for (unsigned int i=0; i<n_rows; ++i)
         {
-            std::vector<float> buffer(n_cols);
-            for (unsigned int i=0; i<n_rows; ++i)
+            for (int j=0; j<n_cols; ++j)
             {
-                for (int j=0; j<n_cols; ++j)
-                    buffer[j] = static_cast<float>(vf[n_cols*i + j]);
-                output_to_file +=
-                    std::string( reinterpret_cast<char *>(buffer.data()), n_cols*sizeof(float) );
+                float val = static_cast<float>(vf[n_cols*i + j]);
+                uint32_t in = *reinterpret_cast<uint32_t*>(&val);
+
+                // endian::to_little_32(in, &out[j*4]);
+
+                out[4*j + 0] = in >> 0;
+                out[4*j + 1] = in >> 8;
+                out[4*j + 2] = in >> 16;
+                out[4*j + 3] = in >> 24;
             }
-        }
-        else
-        {
-            for (unsigned int i=0; i<n_rows; i++)
-                output_to_file +=
-                    std::string( reinterpret_cast<const char *>(&vf[i]), n_cols*sizeof(float) );
+            output_to_file +=
+                std::string( reinterpret_cast<char *>(out.data()), n_cols*sizeof(float) );
         }
     }
+
+    output_to_file += "\n";
 }
 catch( ... )
 {
@@ -513,6 +372,5 @@ catch( ... )
 {
     return OVF_ERROR;
 }
-
 
 #endif
