@@ -22,12 +22,13 @@ option( OVF_BUILD_FORTRAN_BINDINGS "Build the module file for Fortran."    ON )
 option( OVF_BUILD_TEST             "Build unit tests for the ovf library." ON )
 #############################################
 
-set( SOURCE_FILES src/ovf.cpp src/parse.cpp )
+set( SOURCE_FILES src/ovf.cpp )
 
 set( HEADER_FILES
     src/ovf.h
     src/detail/helpers.hpp
     src/detail/parse.hpp
+    src/detail/parse_rules.hpp
     src/detail/write.hpp
     src/detail/Filter_File_Handle.hpp
 )
