@@ -118,21 +118,36 @@ namespace parse
             : pegtl::string< '#' >
         {};
 
-        // "#\eol"
+        // Line without contents, up to EOL or comment
         struct empty_line
-            : pegtl::seq< pegtl::string< '#' >, pegtl::star<pegtl::blank> >
+            : pegtl::seq<
+                pegtl::string<'#'>,
+                pegtl::until<
+                    pegtl::at<
+                        pegtl::sor<pegtl::eol, pegtl::string<'#','#'>>
+                    >,
+                    pegtl::blank
+                >
+            >
         {};
 
-        // "## " initiates comment line
+        // Comment line up to EOL. "##" initiates comment line
         struct comment
-            : pegtl::seq< pegtl::string< '#', '#' >, pegtl::star<pegtl::any> >
+            : pegtl::seq<
+                pegtl::string< '#', '#' >,
+                pegtl::until<
+                    pegtl::at<pegtl::eol>,
+                    pegtl::any
+                >
+            >
         {};
 
+        // Number of lines without content (empty and comment lines)
         struct skippable_lines
-            : pegtl::star< pegtl::seq<
-                pegtl::sor< pegtl::plus<empty_line>, pegtl::plus<comment> >,
-                pegtl::eol
-                > >
+            : pegtl::star< pegtl::sor<
+                pegtl::seq< empty_line, pegtl::opt<comment>, pegtl::eol >,
+                pegtl::seq< comment, pegtl::eol >
+            > >
         {};
 
         // " OOMMF OVF "
@@ -273,7 +288,7 @@ namespace parse
 
         // This checks that the line end is met and moves up until eol
         struct finish_line
-            : pegtl::seq<pegtl::at<line_end>, pegtl::until<pegtl::eol>>
+            : pegtl::seq< pegtl::star<pegtl::blank>, pegtl::at<line_end>, pegtl::until<pegtl::eol>>
         {};
 
         // Title
@@ -293,18 +308,16 @@ namespace parse
 
         // valueunits
         struct valueunits
-            :  pegtl::until<pegtl::at< line_end >>
+            : pegtl::until<pegtl::at< line_end >>
         {};
         // valuelabels
         struct valuelabels
-            :  pegtl::until<pegtl::at< line_end >>
+            : pegtl::until<pegtl::at< line_end >>
         {};
 
         // meshunit
         struct meshunit
-            : pegtl::sor<
-                pegtl::pad<TAO_PEGTL_ISTRING("unspecified"), pegtl::blank>,
-                pegtl::pad<pegtl::plus<pegtl::alpha>, pegtl::blank> >
+            : pegtl::until<pegtl::at< line_end >>
         {};
 
         // min
@@ -375,61 +388,51 @@ namespace parse
         struct header
             : pegtl::seq<
                 begin, TAO_PEGTL_ISTRING("Header"), pegtl::eol,
-                //
                 skippable_lines,
-                //
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("Title:"), pegtl::blank >, title, pegtl::until<pegtl::eol> >,
-                //
+                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("Title:"), pegtl::blank >, title, finish_line >,
                 skippable_lines,
-                //
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("Desc:"), pegtl::blank >, description, pegtl::until<pegtl::eol> >,
-                //
+                pegtl::plus< prefix, pegtl::pad< TAO_PEGTL_ISTRING("Desc:"), pegtl::blank >, description, finish_line >,
                 skippable_lines,
-                //
                 pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("valuedim:"), pegtl::blank >, valuedim, finish_line >,
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("valueunits:"), pegtl::blank >, valueunits, pegtl::until<pegtl::eol> >,
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("valuelabels:"), pegtl::blank >, valuelabels, pegtl::until<pegtl::eol> >,
-                //
                 skippable_lines,
-                // TODO: why do I need the following `until`? -> it seems comments are not skipped properly...
-                pegtl::until<pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("meshunit:"), pegtl::blank >, meshunit, finish_line >>,
-                //
+                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("valueunits:"), pegtl::blank >, valueunits, finish_line >,
                 skippable_lines,
-                //
+                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("valuelabels:"), pegtl::blank >, valuelabels, finish_line >,
+                skippable_lines,
+                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("meshunit:"), pegtl::blank >, meshunit, finish_line >,
+                skippable_lines,
                 pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("xmin:"), pegtl::blank >, xmin, finish_line >,
+                skippable_lines,
                 pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("ymin:"), pegtl::blank >, ymin, finish_line >,
+                skippable_lines,
                 pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("zmin:"), pegtl::blank >, zmin, finish_line >,
-                //
                 skippable_lines,
-                //
                 pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("xmax:"), pegtl::blank >, xmax, finish_line >,
+                skippable_lines,
                 pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("ymax:"), pegtl::blank >, ymax, finish_line >,
+                skippable_lines,
                 pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("zmax:"), pegtl::blank >, zmax, finish_line >,
-                //
                 skippable_lines,
-                //
                 pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("meshtype:"), pegtl::blank >, meshtype, finish_line >,
-                //
+                skippable_lines,
+                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("xbase:"), pegtl::blank >, xbase, finish_line >,
+                skippable_lines,
+                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("ybase:"), pegtl::blank >, ybase, finish_line >,
+                skippable_lines,
+                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("zbase:"), pegtl::blank >, zbase, finish_line >,
                 skippable_lines,
                 //
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("xbase:"), pegtl::blank >, xbase, finish_line >,
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("ybase:"), pegtl::blank >, ybase, finish_line >,
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("zbase:"), pegtl::blank >, zbase, finish_line >,
-                //
-                // skippable_lines,
-                // //
                 // pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("xstepsize:"), pegtl::blank >, xstepsize, finish_line >,
                 // pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("ystepsize:"), pegtl::blank >, ystepsize, finish_line >,
                 // pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("zstepsize:"), pegtl::blank >, zstepsize, finish_line >,
                 //
                 skippable_lines,
-                //
                 pegtl::until<pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("xnodes:"), pegtl::blank >, xnodes, finish_line >>,
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("ynodes:"), pegtl::blank >, ynodes, finish_line >,
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("znodes:"), pegtl::blank >, znodes, finish_line >,
-                //
                 skippable_lines,
-                //
+                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("ynodes:"), pegtl::blank >, ynodes, finish_line >,
+                skippable_lines,
+                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("znodes:"), pegtl::blank >, znodes, finish_line >,
+                skippable_lines,
                 pegtl::seq<end, TAO_PEGTL_ISTRING("Header"), pegtl::eol>>
         {};
 
@@ -529,7 +532,8 @@ namespace parse
             template< typename Input >
             static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
             {
-                segment.comment = strdup(in.string().c_str());
+                std::string full = std::string(segment.comment) + "\n" + in.string();
+                segment.comment = strdup(full.c_str());
             }
         };
 
