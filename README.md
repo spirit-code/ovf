@@ -2,8 +2,7 @@ OVF Parser Library
 =================================
 **Simple API for powerful OOMMF Vector Field file parsing**<br />
 
-
-[OVF format specification](https://math.nist.gov/oommf/doc/userguide20a0/userguide/Vector_Field_File_Format_OV.html)
+[OVF format specification](#specification)
 
 [![Build Status](https://travis-ci.org/spirit-code/ovf.svg?branch=master)](https://travis-ci.org/spirit-code/ovf)
 [![Build status](https://ci.appveyor.com/api/projects/status/ur0cq1tykfndlj06/branch/master?svg=true)](https://ci.appveyor.com/project/GPMueller/ovf)
@@ -215,33 +214,39 @@ When linking statically, you can also link the object file `ovf.cpp.o` instead o
 
 
 
-File format specification (Work in Progress!)
+File format v2.0 specification <a name="specification"></a>
 =================================
 
-This library supports the OVF 2.0 format, but provides some extensions to it.
-Extensions this library currently makes are documented below, but are subject to change.
+This specification is written according to the
+[NIST user guide for OOMMF](https://math.nist.gov/oommf/doc/userguide20a0/userguide/OVF_2.0_format.html)
+and has been implemented, but not tested or verified against OOMMF.
 
-After the header, the file consists of Segment blocks, each composed of a header and a data block.
+*Note: The OVF 2.0 format is a modification to the OVF 1.0 format that also supports fields across three spatial dimensions but having values of arbitrary (but fixed) dimension. The following is a full specification of the 2.0 format.*
+
 
 General
 ---------------------------------
 
-- An OVF file has an ASCII header and trailer, and a data block that may be either ASCII or binary.
+- An OVF file has an ASCII header and trailer, and data blocks that may be either ASCII or binary.
 - All non-data lines begin with a `#` character
-- Comments start with `##` and are ignored by the parser. A comment continues until the end of the line, there is no line continuation character
+- Comments start with `##` and are ignored by the parser. A comment continues until the end of the line.
+- There is no line continuation character
 - Lines starting with a `#` but containing only whitespace are ignored
-- *Extension:* lines starting with a `#` but containing an unknown keyword are ignored.
-- All non-empty non-comment lines in the file header are structured as pairs of label and value.
-    - The label tag consists of all characters after the initial `#` up to the first colon (`:`) character. Case is ignored, and all whitespace is removed
-    - The value consists of all characters after the first colon, continuing up to a `##` comment designator or the end of the line.
-- Data ordering is generally with the x index incremented first, then the y index, and the z index last
+- Lines starting with a `#` but containing an unknown keyword are are an error
+
+After an overall header, the file consists of segment blocks, each composed of a segment header, data block and trailer.
+
+- The field domain (i.e., the spatial extent) lies across three dimensions, with units typically expressed in meters or nanometers
+- The field can be of any arbitrary dimension `N > 0` (This dimension, however, is fixed within each segment).
+
 
 Header
 ---------------------------------
 
-- The first line of an OVF 2.0 file must contain `# OOMMF OVF 2.0`
+- The first line of an OVF 2.0 file must be `# OOMMF OVF 2.0`
 - The header should also contain the number of segments, specified as e.g. `# Segment count: 000001`
-- *Extension:* the count is padded to 6 digits with zeros (this is so that segments can be appended and the count incremented without having to re-write the entire file)
+- Zero-padding of the segment count is not specified
+
 
 Segments
 ---------------------------------
@@ -249,34 +254,139 @@ Segments
 **Segment Header**
 
 - Each block begins with a `# Begin: <block type>` line, and ends with a corresponding `# End: <block type>` line
-- Everything inside the `Header` block should be either comments or one of the following file keyword lines. The order of keywords is not specified. *Extension:* all have default values, so none are required unless otherwise stated
+- A non-empty non-comment line consists of a keyword and a value:
+    - A keyword consists of all characters after the initial `#` up to the first colon (`:`) character. Case is ignored, and all whitespace is removed
+    - Unknown keywords are errors
+    - The value consists of all characters after the first colon (`:`) up to a comment (`##`) or line ending
+- The order of keywords is not specified
+- None of the keywords have default values, so all are required unless stated otherwise
+- Everything inside the `Header` block should be either comments or one of the following file keyword lines
     - `title`: long file name or title
     - `desc`: description line, use as many as desired
-    - `meshunit`: fundamental mesh spatial unit, treated as a label. The comment marker `##` is not allowed in this label. Example value: `nm`
-    - `valueunits`: should be a N-item (Tcl) list of value units, each treated as an unparsed label. The list should either have a length of valuedim, in which case each element denotes the units for the corresponding dimension index, or else the list should have length one, in which case the single element is applied to all dimension indexes. The comment marker `##` is not allowed in this label. Example: `"kA/m"`
-    - `valuelabels`: This should be a N-item (Tcl) list of value labels, one for each value dimension. The labels identify the quantity in each dimension. For example, in an energy density file, N would be 1, valueunits could be `"J/m3"` , and valuelabels might be `"Exchange energy density"`
-    - `valuedim`: *Extension:* this always specifies the vector dimensionality
-    - `xmin`, `ymin`, `zmin`, `xmax`, `ymax`, `zmax`: six separate lines, specifying the bounding box for the mesh
-    - `boundary`: two (x,y,z) triples specifying the two relevant vertices of a boundary frame. *Extension:* can be used instead of `xmin` etc.
-    - `meshtype`: grid structure; should be either `rectangular` or `irregular`
-    - `pointcount`: number of data sample points/locations per cell (here called node)
-    - `xnodes`, `ynodes`, `znodes`: three separate lines, specifying the number of nodes along each axis (integers). *Extension:* for an irregular grid, the entire grid will be repeated
-    - `xbase`, `ybase`, `zbase`: three (x,y,z) triples, specifying the bravais vectors along which the basis cell is repeated
-    - `xstepsize`, `ystepsize`, `zstepsize`: three separate lines - scale factors for the bravais vectors
+    - `meshunit`: fundamental mesh spatial unit. The comment marker `##` is not allowed in this line. Example value: `nm`
+    - `valueunits`: should be a (Tcl) list of value units. The comment marker `##` is not allowed in this line. Example value: `"kA/m"`. The length of the list should be one of
+        - `N`: each element denotes the units for the corresponding dimension index
+        - `1`: the single element is applied to all dimension indexes
+    - `valuelabels`: This should be a `N`-item (Tcl) list of value labels, one for each value dimension. The labels identify the quantity in each dimension. For example, in an energy density file, `N` would be `1`, valueunits could be `"J/m3"`, and valuelabels might be `"Exchange energy density"`
+    - `valuedim` (integer): specifies an integer value, `N`, which is the dimensionality of the field. `N >= 1`
+    - `xmin`, `ymin`, `zmin`, `xmax`, `ymax`, `zmax`: six separate lines, specifying the bounding box for the mesh, in units of `meshunit`
+    - `meshtype`: grid structure; should be either
+        - `rectangular`: requires also `xbase`, `ybase`, `zbase`, `xstepsize`, `ystepsize`, `zstepsize`, and `xnodes`, `ynodes`, `znodes`
+        - `irregular`: requires also `pointcount`
+    - `xbase`, `ybase`, `zbase`: three separate lines, denoting the origin (i.e. the position of the first point in the data section), in units of `meshunit`. For rectangular grids only
+    - `xstepsize`, `ystepsize`, `zstepsize`: three separate lines, specifying the distance between adjacent grid points, in units of `meshunit`. For rectangular grids only
+    - `xnodes`, `ynodes`, `znodes` (integers): three separate lines, specifying the number of nodes along each axis. For rectangular grids only
+    - `pointcount` (integer): number of data sample points/locations, i.e., nodes. For irregular grids only
 
-Standard OVF specification:
-- `xmin`, `ymin`, `zmin`, `xmax`, `ymax`, `zmax`: six separate lines, specifying the bounding box for the mesh, in units of `meshunit`
-- `boundary`: List of (x,y,z) triples specifying the vertices of a boundary frame. *Extension:* can be used instead of `xmin` etc.
-- `meshtype`: grid structure; should be either `rectangular` or `irregular`. For an irregular grid, `pointcount` should also be specified. rectangular grid files should specify instead `xbase`, `ybase`, `zbase`, `xstepsize`, `ystepsize`, `zstepsize`, and `xnodes`, `ynodes`, `znodes`
-- `pointcount`: number of data sample points/locations, i.e., nodes (integer). For irregular grids only.
-- `xbase`, `ybase`, `zbase`: three separate lines, denoting the position of the first point in the data section, in units of `meshunit`. For rectangular grids only.
-- `xstepsize`, `ystepsize`, `zstepsize`: three separate lines, specifying the distance between adjacent grid points, in units of `meshunit`
-- `xnodes`, `ynodes`, `znodes`: three separate lines, specifying the number of nodes along each axis (integers). For rectangular grids only. *Extension:* also for irregular grids, where it defines the repetitions of the irregular set of points?
 
 **Segment Data**
 
-- The data block start is marked by a line of the form  `# Begin: data <representation>` (and therefore closed by `# End: data <representation>`), where `<representation>` is one of `text`, `binary 4`, or `binary 8`
-- *Extension:* `csv` is also a valid representation and corresponds to comma-separated columns of `text` type
-- The binary representations are IEEE floating point in little endian (LSB) order. To ensure that the byte order is correct, and to provide a partial check that the file hasn't been sent through a non 8-bit clean channel, the first data value is fixed to `1234567.0` for 4-byte mode, corresponding to the LSB hex byte sequence `38 B4 96 49`, and `123456789012345.0` for 8-byte mode, corresponding to the LSB hex byte sequence `40 DE 77 83 21 12 DC 42`)
+- The data block start is marked by a line of the form  `# Begin: data <representation>` (and therefore closed by `# End: data <representation>`), where `<representation>` is one of
+    - `text`
+    - `binary 4`
+    - `binary 8`
+- In the Data block, for regular meshes each record consists of `N` values, where `N` is the value dimension as specified by the `valuedim` record in the Segment Header. For irregular meshes, each record consists of `N + 3` values, where the first three values are the x , y and z components of the node position.
+- It is common convention for the `text` data to be in `N` columns, separated by whitespace
+- Data ordering is generally with the x index incremented first, then the y index, and the z index last
+
+For binary data:
+- The binary representations are IEEE 754 standardized floating point numbers in little endian (LSB) order. To ensure that the byte order is correct, and to provide a partial check that the file hasn't been sent through a non 8-bit clean channel, the first data value is fixed to `1234567.0` for 4-byte mode, corresponding to the LSB hex byte sequence `38 B4 96 49`, and `123456789012345.0` for 8-byte mode, corresponding to the LSB hex byte sequence `40 DE 77 83 21 12 DC 42`
 - The data immediately follows the check value
 - The first character after the last data value should be a newline
+
+
+Extensions made by this library
+---------------------------------
+
+These extensions are mainly to help with data for atomistic systems.
+
+- The segment count is padded to 6 digits with zeros (this is so that segments can be appended and the count incremented without having to re-write the entire file)
+- Lines starting with a `#` but containing an unknown keyword are ignored.
+- All keywords have default values, so none are required
+<!-- - `xnodes`, `ynodes`, `znodes`: for an `irregular` grid, the entire grid will be repeated? -->
+- `csv` is also a valid ASCII data representation and corresponds to comma-separated columns of `text` type
+
+
+Current limitations of this library
+---------------------------------
+
+- the order of keywords in a segment header is fixed!
+- the differentiation between rectangular and irregular meshes does not yet influence which keywords are required
+- colon `:` has to follow right after each keyword
+- `meshunit` is not functioning adequately
+- `valueunits` is not functioning adequately
+- `valuelabels` is not functioning adequately
+- `meshtype` is probably not implemented as specified
+- `xbase` etc. are interpreted as triples containing basis vectors
+- `irregular` grids are not yet implemented adequately
+
+
+Example
+---------------------------------
+
+An example OVF 2.0 file for an irregular mesh with N = 2:
+
+```
+# OOMMF OVF 2.0
+#
+# Segment count: 1
+#
+# Begin: Segment
+# Begin: Header
+#
+# Title: Long file name or title goes here
+#
+# Desc: Optional description line 1.
+# Desc: Optional description line 2.
+# Desc: ...
+#
+## Fundamental mesh measurement unit.  Treated as a label:
+# meshunit: nm
+#
+# meshtype: irregular
+# pointcount: 5      ## Number of nodes in mesh
+#
+# xmin:    0.    ## Corner points defining mesh bounding box in
+# ymin:    0.    ## 'meshunit'.  Floating point values.
+# zmin:    0.
+# xmax:   10.
+# ymax:    5.
+# zmax:    1.
+#
+# valuedim: 2    ## Value dimension
+#
+## Fundamental field value units, treated as labels (i.e., unparsed).
+## In general, there should be one label for each value dimension.
+# valueunits:  J/m^3  A/m
+# valuelabels: "Zeeman energy density"  "Anisotropy field"
+#
+# End: Header
+#
+## Each data records consists of N+3 values: the (x,y,z) node
+## location, followed by the N value components.  In this example,
+## N+3 = 5, the two value components are in units of J/m^3 and A/m,
+## corresponding to Zeeman energy density and a magneto-crystalline
+## anisotropy field, respectively.
+#
+# Begin: data text
+0.5 0.5 0.5  500.  4e4
+9.5 0.5 0.5  300.  5e3
+0.5 4.5 0.5  400.  4e4
+9.5 4.5 0.5  200.  5e3
+5.0 2.5 0.5  350.  2.1e4
+# End: data text
+# End: segment
+```
+
+Comparison to OVF 1.0
+---------------------------------
+
+- The first line reads `# OOMMF OVF 2.0` for both regular and irregular meshes. 
+- In the segment header block
+    - the keywords `valuemultiplier`, `boundary`, `ValueRangeMaxMag` and `ValueRangeMinMag` of the OVF 1.0 format are not supported.
+    - the new keyword `valuedim` is required. This must specify an integer value, `N`, bigger or equal to one.
+    - the new `valueunits` keyword replaces the `valueunit` keyword of OVF 1.0, which is not allowed in OVF 2.0 files.
+    - the new `valuelabels` keyword is required.
+- In the segment data block
+    - The node ordering is the same as for the OVF 1.0 format.
+    - For data blocks using text representation with `N = 3`, the data block in OVF 1.0 and OVF 2.0 files are exactly the same. Another common case is `N = 1`, which represents scalar fields, such as energy density (in say, `J/m3` )
