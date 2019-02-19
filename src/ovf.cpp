@@ -46,7 +46,7 @@ try
         {0,0,0},                  // bounds_min
         {0,0,0},                  // bounds_max
         0,                        // lattice_constant
-        {{1,0,0},{0,1,0},{0,0,1}} // bravais_vectors
+        {0,0,0}                   // origin
     };
 
     return ovf_segment_ptr;
@@ -69,7 +69,7 @@ try
     if( !segment->title )
         return false;
 
-    if( !segment->bravais_vectors[0] || !segment->bravais_vectors[1] || !segment->bravais_vectors[2] )
+    if( !segment->origin )
         return false;
 
     return true;

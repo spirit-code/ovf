@@ -40,7 +40,7 @@ struct ovf_segment {
 
     /* the geometrical information on the vector field */
     char *meshtype;
-    char *meshunits;
+    char *meshunit;
     int pointcount;
 
     int n_cells[3];
@@ -51,7 +51,7 @@ struct ovf_segment {
     float bounds_max[3];
 
     float lattice_constant;
-    float bravais_vectors[3][3];
+    float origin[3];
 
     /* then some "private" internal fields */
 };

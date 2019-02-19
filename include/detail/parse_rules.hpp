@@ -6,6 +6,7 @@
 #include <detail/helpers.hpp>
 
 #include <tao/pegtl.hpp>
+#include <fmt/format.h>
 
 #include <array>
 
@@ -17,6 +18,8 @@ struct parser_state
     // for reading data blocks
     int current_column = 0;
     int current_line = 0;
+
+    std::string keyword="", value="";
 
     /*
     messages, e.g. in case a function returned OVF_ERROR.
@@ -274,6 +277,7 @@ namespace parse
             : tao::pegtl::uint64_le::any
         {};
 
+
         //////////////////////////////////////////////
 
         // Vector3 of floating point values
@@ -291,149 +295,41 @@ namespace parse
             : pegtl::seq< pegtl::star<pegtl::blank>, pegtl::at<line_end>, pegtl::until<pegtl::eol>>
         {};
 
-        // Title
-        struct title
-            :  pegtl::until<pegtl::at< line_end >>
-        {};
-
-        // Description
-        struct description
-            : pegtl::until<pegtl::at< line_end >>
-        {};
-
-        // valuedim
-        struct valuedim
-            : pegtl::pad<pegtl::plus<pegtl::digit>, pegtl::blank>
-        {};
-
-        // valueunits
-        struct valueunits
-            : pegtl::until<pegtl::at< line_end >>
-        {};
-        // valuelabels
-        struct valuelabels
-            : pegtl::until<pegtl::at< line_end >>
-        {};
-
-        // meshunit
-        struct meshunit
-            : pegtl::until<pegtl::at< line_end >>
-        {};
-
-        // min
-        struct xmin
-            : pegtl::pad<data_float, pegtl::blank>
-        {};
-        struct ymin
-            : pegtl::pad<data_float, pegtl::blank>
-        {};
-        struct zmin
-            : pegtl::pad<data_float, pegtl::blank>
-        {};
-
-        // max
-        struct xmax
-            : pegtl::pad<data_float, pegtl::blank>
-        {};
-        struct ymax
-            : pegtl::pad<data_float, pegtl::blank>
-        {};
-        struct zmax
-            : pegtl::pad<data_float, pegtl::blank>
-        {};
-
-        // meshtype
-        struct meshtype
-            : pegtl::sor<
-                pegtl::pad<TAO_PEGTL_ISTRING("rectangular"), pegtl::blank>,
-                pegtl::pad<TAO_PEGTL_ISTRING("irregular"), pegtl::blank> >
-        {};
-
-        // base
-        struct xbase
-            : vector3f
-        {};
-        struct ybase
-            : vector3f
-        {};
-        struct zbase
-            : vector3f
-        {};
-
-        // stepsize
-        struct xstepsize
-            : pegtl::pad<data_float, pegtl::blank>
-        {};
-        struct ystepsize
-            : pegtl::pad<data_float, pegtl::blank>
-        {};
-        struct zstepsize
-            : pegtl::pad<data_float, pegtl::blank>
-        {};
-
-        // nodes
-        struct xnodes
-            : pegtl::pad<pegtl::plus<pegtl::digit>, pegtl::blank>
-        {};
-        struct ynodes
-            : pegtl::pad<pegtl::plus<pegtl::digit>, pegtl::blank>
-        {};
-        struct znodes
-            : pegtl::pad<pegtl::plus<pegtl::digit>, pegtl::blank>
-        {};
-
         //////////////////////////////////////////////
+
+
+        // TODO: use sor<......> to allow a specific set of keywords
+        //       and use proper error reporting, throwing unknown keywords
+        struct keyword
+            : pegtl::until< pegtl::at<TAO_PEGTL_ISTRING(":")>,
+                pegtl::if_must<pegtl::not_at<pegtl::eol>, pegtl::any> >//, pegtl::not_at<pegtl::sor<pegtl::eol, TAO_PEGTL_ISTRING("##")>> >
+        {};
+
+        struct value   : pegtl::seq< pegtl::until<pegtl::at< line_end >> > {};
+
+        struct keyword_value_line
+            : pegtl::seq<
+                prefix,
+                pegtl::pad< keyword, pegtl::blank >,
+                TAO_PEGTL_ISTRING(":"),
+                pegtl::pad< value, pegtl::blank >,
+                finish_line >
+        {};
 
         //
         struct header
             : pegtl::seq<
-                begin, TAO_PEGTL_ISTRING("Header"), pegtl::eol,
-                skippable_lines,
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("Title:"), pegtl::blank >, title, finish_line >,
-                skippable_lines,
-                pegtl::plus< prefix, pegtl::pad< TAO_PEGTL_ISTRING("Desc:"), pegtl::blank >, description, finish_line >,
-                skippable_lines,
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("valuedim:"), pegtl::blank >, valuedim, finish_line >,
-                skippable_lines,
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("valueunits:"), pegtl::blank >, valueunits, finish_line >,
-                skippable_lines,
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("valuelabels:"), pegtl::blank >, valuelabels, finish_line >,
-                skippable_lines,
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("meshunit:"), pegtl::blank >, meshunit, finish_line >,
-                skippable_lines,
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("xmin:"), pegtl::blank >, xmin, finish_line >,
-                skippable_lines,
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("ymin:"), pegtl::blank >, ymin, finish_line >,
-                skippable_lines,
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("zmin:"), pegtl::blank >, zmin, finish_line >,
-                skippable_lines,
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("xmax:"), pegtl::blank >, xmax, finish_line >,
-                skippable_lines,
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("ymax:"), pegtl::blank >, ymax, finish_line >,
-                skippable_lines,
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("zmax:"), pegtl::blank >, zmax, finish_line >,
-                skippable_lines,
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("meshtype:"), pegtl::blank >, meshtype, finish_line >,
-                skippable_lines,
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("xbase:"), pegtl::blank >, xbase, finish_line >,
-                skippable_lines,
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("ybase:"), pegtl::blank >, ybase, finish_line >,
-                skippable_lines,
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("zbase:"), pegtl::blank >, zbase, finish_line >,
-                skippable_lines,
-                //
-                // pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("xstepsize:"), pegtl::blank >, xstepsize, finish_line >,
-                // pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("ystepsize:"), pegtl::blank >, ystepsize, finish_line >,
-                // pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("zstepsize:"), pegtl::blank >, zstepsize, finish_line >,
-                //
-                skippable_lines,
-                pegtl::until<pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("xnodes:"), pegtl::blank >, xnodes, finish_line >>,
-                skippable_lines,
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("ynodes:"), pegtl::blank >, ynodes, finish_line >,
-                skippable_lines,
-                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("znodes:"), pegtl::blank >, znodes, finish_line >,
-                skippable_lines,
-                pegtl::seq<end, TAO_PEGTL_ISTRING("Header"), pegtl::eol>>
+                begin, TAO_PEGTL_ISTRING("Header"), finish_line,
+                pegtl::until<
+                    pegtl::seq<end, TAO_PEGTL_ISTRING("Header")>,
+                    pegtl::must<
+                        skippable_lines,
+                        keyword_value_line,
+                        skippable_lines
+                    >
+                >,
+                finish_line
+            >
         {};
 
 
@@ -513,224 +409,178 @@ namespace parse
         };
 
 
-        ////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //
+        template<>
+        struct ovf_segment_header_action< keyword >
+        {
+            template< typename Input >
+            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
+            {
+                // std::cerr << "      keyword: " << in.string() << std::endl;
+                f._state->keyword = in.string();
+                std::transform(f._state->keyword.begin(), f._state->keyword.end(),f._state->keyword.begin(), ::tolower);
+            }
+        };
+        template<>
+        struct ovf_segment_header_action< value >
+        {
+            template< typename Input >
+            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
+            {
+                // std::cerr << "      value: " << in.string() << std::endl;
+                f._state->value = in.string();
+                std::transform(f._state->value.begin(), f._state->value.end(),f._state->value.begin(), ::tolower);
+            }
+        };
+        template<>
+        struct ovf_segment_header_action< keyword_value_line >
+        {
+            template< typename Input >
+            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
+            {
+                if( f._state->keyword == "title" )
+                    segment.title = strdup(f._state->value.c_str());
+                else if( f._state->keyword == "desc" )
+                    segment.comment = strdup(f._state->value.c_str());
+                else if( f._state->keyword == "meshunit" )
+                    segment.meshunit = strdup(f._state->value.c_str());
+                else if( f._state->keyword == "valueunits" )
+                    segment.valueunits = strdup(f._state->value.c_str());
+                else if( f._state->keyword == "valuelabels" )
+                    segment.valuelabels = strdup(f._state->value.c_str());
+                else if( f._state->keyword == "valueunits" )
+                    segment.valueunits = strdup(f._state->value.c_str());
+                else if( f._state->keyword == "valuedim" )
+                    segment.valuedim = std::stoi(f._state->value.c_str());
+                else if( f._state->keyword == "xmin" )
+                    segment.bounds_min[0] = std::stof(f._state->value.c_str());
+                else if( f._state->keyword == "ymin" )
+                    segment.bounds_min[1] = std::stof(f._state->value.c_str());
+                else if( f._state->keyword == "zmin" )
+                    segment.bounds_min[2] = std::stof(f._state->value.c_str());
+                else if( f._state->keyword == "xmax" )
+                    segment.bounds_max[0] = std::stof(f._state->value.c_str());
+                else if( f._state->keyword == "ymax" )
+                    segment.bounds_max[1] = std::stof(f._state->value.c_str());
+                else if( f._state->keyword == "zmax" )
+                    segment.bounds_max[2] = std::stof(f._state->value.c_str());
+                else if( f._state->keyword == "meshtype" )
+                {
+                    if( std::string(segment.meshtype) == "" )
+                    {
+                        if( f._state->value != "rectangular" && f._state->value != "irregular" )
+                            throw tao::pegtl::parse_error( fmt::format(
+                                "Invalid meshtype: \"{}\"", f._state->value), in );
+                        segment.meshtype = strdup(f._state->value.c_str());
+                    }
+                    else if( segment.meshtype != f._state->value )
+                    {
+                        throw tao::pegtl::parse_error( fmt::format(
+                            "meshtype \"{}\" was specified, but due to other parameters specified before, \"{}\" was expected!",
+                            f._state->value, segment.meshtype), in );
+                    }
+                    
+                }
+                else if( f._state->keyword == "xbase" )
+                {
+                    if( std::string(segment.meshtype) == "" )
+                        segment.meshtype = strdup("rectangular");
+                    else if( std::string(segment.meshtype) != "rectangular" )
+                        throw tao::pegtl::parse_error( fmt::format(
+                            "xbase is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.origin[0] = std::stof(f._state->value.c_str());
+                }
+                else if( f._state->keyword == "ybase" )
+                {
+                    if( std::string(segment.meshtype) == "" )
+                        segment.meshtype = strdup("rectangular");
+                    else if( std::string(segment.meshtype) != "rectangular" )
+                        throw tao::pegtl::parse_error( fmt::format(
+                            "ybase is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.origin[1] = std::stof(f._state->value.c_str());
+                }
+                else if( f._state->keyword == "zbase" )
+                {
+                    if( std::string(segment.meshtype) == "" )
+                        segment.meshtype = strdup("rectangular");
+                    else if( std::string(segment.meshtype) != "rectangular" )
+                        throw tao::pegtl::parse_error( fmt::format(
+                            "zbase is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.origin[2] = std::stof(f._state->value.c_str());
+                }
+                else if( f._state->keyword == "xstepsize" )
+                {
+                    if( std::string(segment.meshtype) == "" )
+                        segment.meshtype = strdup("rectangular");
+                    else if( std::string(segment.meshtype) != "rectangular" )
+                        throw tao::pegtl::parse_error( fmt::format(
+                            "xstepsize is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.step_size[0] = std::stof(f._state->value.c_str());
+                }
+                else if( f._state->keyword == "ystepsize" )
+                {
+                    if( std::string(segment.meshtype) == "" )
+                        segment.meshtype = strdup("rectangular");
+                    else if( std::string(segment.meshtype) != "rectangular" )
+                        throw tao::pegtl::parse_error( fmt::format(
+                            "ystepsize is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.step_size[1] = std::stof(f._state->value.c_str());
+                }
+                else if( f._state->keyword == "zstepsize" )
+                {
+                    if( std::string(segment.meshtype) == "" )
+                        segment.meshtype = strdup("rectangular");
+                    else if( std::string(segment.meshtype) != "rectangular" )
+                        throw tao::pegtl::parse_error( fmt::format(
+                            "zstepsize is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.step_size[2] = std::stof(f._state->value.c_str());
+                }
+                else if( f._state->keyword == "meshunit" )
+                    segment.meshunit = strdup(f._state->value.c_str());
+                else if( f._state->keyword == "xnodes" )
+                {
+                    if( std::string(segment.meshtype) == "" )
+                        segment.meshtype = strdup("rectangular");
+                    else if( std::string(segment.meshtype) != "rectangular" )
+                        throw tao::pegtl::parse_error( fmt::format(
+                            "xnodes is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.n_cells[0] = std::stoi(f._state->value.c_str());
+                }
+                else if( f._state->keyword == "ynodes" )
+                {
+                    if( std::string(segment.meshtype) == "" )
+                        segment.meshtype = strdup("rectangular");
+                    else if( std::string(segment.meshtype) != "rectangular" )
+                        throw tao::pegtl::parse_error( fmt::format(
+                            "ynodes is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.n_cells[1] = std::stoi(f._state->value.c_str());
+                }
+                else if( f._state->keyword == "znodes" )
+                {
+                    if( std::string(segment.meshtype) == "" )
+                        segment.meshtype = strdup("rectangular");
+                    else if( std::string(segment.meshtype) != "rectangular" )
+                        throw tao::pegtl::parse_error( fmt::format(
+                            "znodes is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.n_cells[2] = std::stoi(f._state->value.c_str());
+                }
+                else if( f._state->keyword == "pointcount" )
+                {
+                    if( segment.meshtype != "" && std::string(segment.meshtype) != "irregular" )
+                        throw tao::pegtl::parse_error( fmt::format(
+                            "pointcount is only for irregular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.pointcount = std::stoi(f._state->value.c_str());
+                }
+                else
+                {
+                    // UNKNOWN KEYWORD
+                    throw tao::pegtl::parse_error( fmt::format(
+                        "unknown keyword \"{}\": \"{}\"", f._state->keyword, f._state->value), in );
+                }
 
-
-        template<>
-        struct ovf_segment_header_action< title >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                segment.title = strdup(in.string().c_str());
-            }
-        };
-
-        template<>
-        struct ovf_segment_header_action< description >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                std::string full = std::string(segment.comment) + "\n" + in.string();
-                segment.comment = strdup(full.c_str());
-            }
-        };
-
-        template<>
-        struct ovf_segment_header_action< valuedim >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                segment.valuedim = std::stoi(in.string());
-            }
-        };
-
-        template<>
-        struct ovf_segment_header_action< valueunits >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                segment.valueunits = strdup(in.string().c_str());
-            }
-        };
-
-        template<>
-        struct ovf_segment_header_action< valuelabels >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                segment.valuelabels = strdup(in.string().c_str());
-            }
-        };
-
-        template<>
-        struct ovf_segment_header_action< xmin >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                segment.bounds_min[0] = std::stod(in.string());
-            }
-        };
-        template<>
-        struct ovf_segment_header_action< ymin >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                segment.bounds_min[1] = std::stod(in.string());
-            }
-        };
-        template<>
-        struct ovf_segment_header_action< zmin >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                segment.bounds_min[2] = std::stod(in.string());
-            }
-        };
-
-        template<>
-        struct ovf_segment_header_action< xmax >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                segment.bounds_max[0] = std::stod(in.string());
-            }
-        };
-        template<>
-        struct ovf_segment_header_action< ymax >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                segment.bounds_max[1] = std::stod(in.string());
-            }
-        };
-        template<>
-        struct ovf_segment_header_action< zmax >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                segment.bounds_max[2] = std::stod(in.string());
-            }
-        };
-
-        template<>
-        struct ovf_segment_header_action< xstepsize >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                segment.step_size[0] = std::stod(in.string());
-            }
-        };
-        template<>
-        struct ovf_segment_header_action< ystepsize >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                segment.step_size[1] = std::stod(in.string());
-            }
-        };
-        template<>
-        struct ovf_segment_header_action< zstepsize >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                segment.step_size[2] = std::stod(in.string());
-            }
-        };
-
-        // TODO
-        template<>
-        struct ovf_segment_header_action< xbase >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                for(int dim=0; dim<3; ++dim)
-                    segment.bravais_vectors[0][dim] = f._state->tmp_vec3[dim];
-                f._state->tmp_idx = 0;
-            }
-        };
-        template<>
-        struct ovf_segment_header_action< ybase >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                for(int dim=0; dim<3; ++dim)
-                    segment.bravais_vectors[1][dim] = f._state->tmp_vec3[dim];
-                f._state->tmp_idx = 0;
-            }
-        };
-        template<>
-        struct ovf_segment_header_action< zbase >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                for(int dim=0; dim<3; ++dim)
-                    segment.bravais_vectors[2][dim] = f._state->tmp_vec3[dim];
-                f._state->tmp_idx = 0;
-            }
-        };
-
-        template<>
-        struct ovf_segment_header_action< meshunit >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                segment.meshunits = strdup(in.string().c_str());
-            }
-        };
-
-        template<>
-        struct ovf_segment_header_action< meshtype >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                segment.meshtype = strdup(in.string().c_str());
-            }
-        };
-
-        template<>
-        struct ovf_segment_header_action< xnodes >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                segment.n_cells[0] = std::stoi(in.string());
-            }
-        };
-        template<>
-        struct ovf_segment_header_action< ynodes >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                segment.n_cells[1] = std::stoi(in.string());
-            }
-        };
-        template<>
-        struct ovf_segment_header_action< znodes >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                segment.n_cells[2] = std::stoi(in.string());
+                f._state->keyword = "";
+                f._state->value = "";
             }
         };
 

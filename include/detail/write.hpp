@@ -237,19 +237,10 @@ namespace write
         // TODO: this ovf library does not support irregular geometry yet. Write ONLY rectangular mesh
         output_to_file += fmt::format( "# meshtype: rectangular\n" );
 
-        // Bravais Lattice
-        output_to_file += fmt::format( "# xbase: {} {} {}\n",
-                                        segment->bravais_vectors[0][0],
-                                        segment->bravais_vectors[0][1],
-                                        segment->bravais_vectors[0][2] );
-        output_to_file += fmt::format( "# ybase: {} {} {}\n",
-                                        segment->bravais_vectors[1][0],
-                                        segment->bravais_vectors[1][1],
-                                        segment->bravais_vectors[1][2] );
-        output_to_file += fmt::format( "# zbase: {} {} {}\n",
-                                        segment->bravais_vectors[2][0],
-                                        segment->bravais_vectors[2][1],
-                                        segment->bravais_vectors[2][2] );
+        // Latice origin in space
+        output_to_file += fmt::format( "# xbase: {}\n", segment->origin[0] );
+        output_to_file += fmt::format( "# ybase: {}\n", segment->origin[1] );
+        output_to_file += fmt::format( "# zbase: {}\n", segment->origin[2] );
 
         // output_to_file += fmt::format( "# xstepsize: {}\n",
         //                             segment->lattice_constant * segment->bravais_vectors[0][0] );

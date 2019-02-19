@@ -310,15 +310,11 @@ These extensions are mainly to help with data for atomistic systems.
 Current limitations of this library
 ---------------------------------
 
-- the order of keywords in a segment header is fixed!
-- the differentiation between rectangular and irregular meshes does not yet influence which keywords are required
+- file writing may still be incorrect
+- `irregular` meshes are untested and probably not yet implemented adequately
 - colon `:` has to follow right after each keyword
-- `meshunit` is not functioning adequately
-- `valueunits` is not functioning adequately
-- `valuelabels` is not functioning adequately
-- `meshtype` is probably not implemented as specified
-- `xbase` etc. are interpreted as triples containing basis vectors
-- `irregular` grids are not yet implemented adequately
+- `meshunit`, `valueunits` and `valuelabels` might not function adequately
+- some parsing errors are not yet logged properly
 
 
 Example

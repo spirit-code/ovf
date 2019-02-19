@@ -39,7 +39,7 @@ type, bind(c) :: c_ovf_segment
     real(kind=c_float)  :: bounds_max(3)
 
     real(kind=c_float)  :: lattice_constant
-    real(kind=c_float)  :: bravais_vectors(3,3)
+    real(kind=c_float)  :: origin(3)
 end type c_ovf_segment
 
 ! Wrapper used to handle C strings
@@ -51,7 +51,7 @@ end type ovf_string
 type :: ovf_segment
     type(ovf_string)        :: Title, Comment, ValueUnits, ValueLabels, MeshType, MeshUnits
     integer                 :: ValueDim, PointCount, N_Cells(3), N
-    real(8)                 :: step_size(3), bounds_min(3), bounds_max(3), lattice_constant, bravais_vectors(3,3)
+    real(8)                 :: step_size(3), bounds_min(3), bounds_max(3), lattice_constant, origin(3)
 contains
     procedure :: initialize => initialize_segment
 end type ovf_segment
@@ -183,7 +183,7 @@ contains
         c_segment%bounds_max(:) = segment%bounds_max(:)
 
         c_segment%lattice_constant = segment%lattice_constant
-        c_segment%bravais_vectors(:,:) = segment%bravais_vectors(:,:)
+        c_segment%origin(:) = segment%origin(:)
     end function get_c_ovf_segment
 
 

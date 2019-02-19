@@ -34,13 +34,12 @@ class ovf_segment(ctypes.Structure):
         ("bounds_min",       ctypes.c_float*3),
         ("bounds_max",       ctypes.c_float*3),
         ("lattice_constant", ctypes.c_float),
-        ("bravais_vectors",  ctypes.c_float*3*3)
+        ("origin",           ctypes.c_float*3)
     ]
 
     def __init__(self, title="", comment="", valuedim=1, valueunits="", valuelabels="", meshtype="", meshunits="",
                 step_size=[0.0, 0.0, 0.0], bounds_min=[0.0, 0.0, 0.0], bounds_max=[0.0, 0.0, 0.0], lattice_constant=0.0,
-                bravais_vectors=[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
-                pointcount=0, n_cells=[1,1,1]):
+                origin=[0.0, 0.0, 0.0], pointcount=0, n_cells=[1,1,1]):
 
         self.title       = title.encode('utf-8')
         self.comment     = comment.encode('utf-8')
@@ -57,8 +56,7 @@ class ovf_segment(ctypes.Structure):
             self.step_size[i]  = step_size[i]
             self.bounds_min[i] = bounds_min[i]
             self.bounds_max[i] = bounds_max[i]
-            for j in range(3):
-                self.bravais_vectors[i][j]  = bravais_vectors[i][j]
+            self.origin[i]     = origin[i]
         self.lattice_constant = lattice_constant
 
 ### --------------------------------------------------------------
