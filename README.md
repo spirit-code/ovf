@@ -314,10 +314,8 @@ Current limitations of this library
 - naming of variables in structs/classes is inconsistent with the file format specifications
 - not all defaults in the segment are sensible
 - `desc` is not optional
-- `valueunits` and `valueunits` are written and parsed, but not checked for dimensionality or content in either
+- `valueunits` and `valuelabels` are written and parsed, but not checked for dimensionality or content in either
 - `min` and `max` values are not checked to make sure they are sensible bounds
-- colon `:` has to follow right after each keyword
-- some parsing errors are not yet logged properly
 
 
 Example

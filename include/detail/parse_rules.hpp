@@ -483,7 +483,7 @@ namespace parse
                             "meshtype \"{}\" was specified, but due to other parameters specified before, \"{}\" was expected!",
                             f._state->value, segment.meshtype), in );
                     }
-                    
+
                 }
                 else if( f._state->keyword == "xbase" )
                 {
@@ -803,6 +803,33 @@ namespace parse
                     "Portable binary only supports IEEE 754 standardized floating point" );
             }
         };
+
+        //////////////////////////////////////////////
+
+        template< typename Rule >
+        struct ovf_segment_header_control : tao::pegtl::normal< Rule >
+        {
+            template< typename Input, typename... States >
+            static void raise( const Input& in, States&&... );
+        };
+
+        template< typename T> template< typename Input, typename... States >
+        void ovf_segment_header_control< T >::raise( const Input& in, States&&... )
+        {
+            throw tao::pegtl::parse_error( "parse error matching " + tao::pegtl::internal::demangle< T >(), in );
+        }
+
+        struct keyword_value_line_error : public tao::pegtl::parse_error
+        {
+            template< typename Input >
+            keyword_value_line_error(const Input & in) : tao::pegtl::parse_error("", in) {};
+        };
+
+        template<> template< typename Input, typename... States >
+        void ovf_segment_header_control< keyword_value_line >::raise( const Input& in, States&&... )
+        {
+            throw keyword_value_line_error( in );
+        }
     }; // namespace v2
 
     namespace v1

@@ -147,7 +147,7 @@ namespace parse
 
         if( file.version == 2 )
         {
-            success = pegtl::parse< pegtl::plus<v2::segment_header>, v2::ovf_segment_header_action >( in, file, segment );
+            success = pegtl::parse< pegtl::plus<v2::segment_header>, v2::ovf_segment_header_action, v2::ovf_segment_header_control >( in, file, segment );
         }
         else if( file.version == 1 )
         {
@@ -174,7 +174,17 @@ namespace parse
             return OVF_INVALID;
         }
     }
-    catch( pegtl::parse_error err )
+    catch( v2::keyword_value_line_error & err )
+    {
+        pegtl::memory_input<> in( file._state->file_contents[index], "" );
+        const auto p = err.positions.front();
+        std::string line = in.line_as_string(p);
+        file._state->message_latest = fmt::format(
+            "libovf segment_header: Expected an empty line or a line containing a keyword and a value!"
+            "Found the following line instead:\n\"{}\"", line);
+        return OVF_ERROR;
+    }
+    catch( pegtl::parse_error & err )
     {
         file._state->message_latest = fmt::format(
             "libovf segment_header: pegtl parse error \'{}\'", + err.what());
