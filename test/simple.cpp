@@ -49,7 +49,7 @@ TEST_CASE( "Write", "[write]" )
         ovf_close(file);
     }
 
-    SECTION( "append")
+    SECTION( "append" )
     {
         // segment header
         auto segment = ovf_segment_initialize();
@@ -72,7 +72,37 @@ TEST_CASE( "Write", "[write]" )
         auto file = ovf_open(testfile);
 
         // write
-        int success = ovf_append_segment_8(file, segment, field.data(), OVF_FORMAT_TEXT);
+        int success = ovf_append_segment_8(file, segment, field.data(), OVF_FORMAT_CSV);
+        if( OVF_OK != success )
+            std::cerr << ovf_latest_message(file) << std::endl;
+        REQUIRE( success == OVF_OK );
+
+        // close
+        ovf_close(file);
+    }
+
+    SECTION( "append irregular" )
+    {
+        // segment header
+        auto segment = ovf_segment_initialize();
+        segment->title = const_cast<char *>("ovf test title - append irregular mesh");
+        segment->comment = const_cast<char *>("an irregular mesh has different keywords than a rectangular one");
+        segment->valuedim = 3;
+        segment->meshtype = const_cast<char *>("irregular");
+        segment->pointcount = 4;
+
+        // data
+        std::vector<double> field(3*segment->pointcount, 1);
+        field[0] = 6;
+        field[3] = 4;
+        field[6] = 2;
+        field[9] = 0;
+
+        // open
+        auto file = ovf_open(testfile);
+
+        // write
+        int success = ovf_append_segment_8(file, segment, field.data(), OVF_FORMAT_CSV);
         if( OVF_OK != success )
             std::cerr << ovf_latest_message(file) << std::endl;
         REQUIRE( success == OVF_OK );
@@ -82,7 +112,7 @@ TEST_CASE( "Write", "[write]" )
     }
 }
 
-TEST_CASE( "Read", "[read]")
+TEST_CASE( "Read", "[read]" )
 {
     const char * testfile = "testfile_cpp.ovf";
 
@@ -93,7 +123,7 @@ TEST_CASE( "Read", "[read]")
 
         // open
         auto file = ovf_open(testfile);
-        REQUIRE( file->n_segments == 2 );
+        REQUIRE( file->n_segments == 3 );
         int index = 0;
 
         // read header
@@ -101,6 +131,7 @@ TEST_CASE( "Read", "[read]")
         if( OVF_OK != success )
             std::cerr << ovf_latest_message(file) << std::endl;
         REQUIRE( segment->N == 4 );
+        REQUIRE( std::string(segment->meshtype) == "rectangular" );
 
         // data
         std::vector<float> field(3*segment->N);
@@ -120,14 +151,14 @@ TEST_CASE( "Read", "[read]")
         ovf_close(file);
     }
 
-    SECTION( "second segment")
+    SECTION( "second segment" )
     {
         // segment header
         auto segment = ovf_segment_initialize();
 
         // open
         auto file = ovf_open(testfile);
-        REQUIRE( file->n_segments == 2 );
+        REQUIRE( file->n_segments == 3 );
         int index = 1;
 
         // read header
@@ -135,6 +166,43 @@ TEST_CASE( "Read", "[read]")
         if( OVF_OK != success )
             std::cerr << ovf_latest_message(file) << std::endl;
         REQUIRE( segment->N == 4 );
+        REQUIRE( std::string(segment->meshtype) == "rectangular" );
+
+        // data
+        std::vector<double> field(3*segment->N);
+
+        // read data
+        success = ovf_read_segment_data_8(file, index, segment, field.data());
+        if( OVF_OK != success )
+            std::cerr << ovf_latest_message(file) << std::endl;
+        REQUIRE( success == OVF_OK );
+        REQUIRE( field[0] == 6 );
+        REQUIRE( field[1] == 1 );
+        REQUIRE( field[3] == 4 );
+        REQUIRE( field[6] == 2 );
+        REQUIRE( field[9] == 0 );
+
+        // close
+        ovf_close(file);
+    }
+
+    SECTION( "third segment" )
+    {
+        // segment header
+        auto segment = ovf_segment_initialize();
+
+        // open
+        auto file = ovf_open(testfile);
+        REQUIRE( file->n_segments == 3 );
+        int index = 2;
+
+        // read header
+        int success = ovf_read_segment_header(file, index, segment);
+        if( OVF_OK != success )
+            std::cerr << ovf_latest_message(file) << std::endl;
+        REQUIRE( segment->N == 4 );
+        REQUIRE( std::string(segment->meshtype) == "irregular" );
+        REQUIRE( segment->pointcount == 4 );
 
         // data
         std::vector<double> field(3*segment->N);

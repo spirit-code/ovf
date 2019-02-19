@@ -216,16 +216,38 @@ namespace write
 
         // The value dimension is always 3 since we are writting Vector3-data
         output_to_file += fmt::format( "# valuedim: {}   ## field dimensionality\n", segment->valuedim );
-        output_to_file += fmt::format( "# valueunits: None None None\n" );
-        output_to_file += fmt::format( "# valuelabels: spin_x_component spin_y_component spin_z_component \n");
-        output_to_file += fmt::format( empty_line );
+
+        //
+        if( std::string(segment->valueunits) == "" )
+        {
+            output_to_file += "# valueunits: ";
+            for( int i=0; i<segment->valuedim; ++i )
+                output_to_file += " unspecified";
+            output_to_file += "\n";
+        }
+        else
+            output_to_file += fmt::format( "# valueunits: {}\n", segment->valueunits );
+
+        //
+        if( std::string(segment->valuelabels) == "" )
+        {
+            output_to_file += "# valuelabels: ";
+            for( int i=0; i<segment->valuedim; ++i )
+                output_to_file += " unspecified";
+            output_to_file += "\n";
+        }
+        else
+            output_to_file += fmt::format( "# valuelabels: {}\n", segment->valuelabels );
 
         // TODO: this ovf library does not support mesh units yet
-        output_to_file += fmt::format( "## Fundamental mesh measurement unit. "
-                                        "Treated as a label:\n" );
-        output_to_file += fmt::format( "# meshunit: unspecified\n" );
         output_to_file += fmt::format( empty_line );
+        output_to_file += fmt::format( "## Fundamental mesh measurement unit. Treated as a label:\n" );
+        if( std::string(segment->meshunit) == "" )
+            output_to_file += "# meshunit: unspecified\n";
+        else
+            output_to_file += fmt::format( "# meshunit: {}\n", segment->meshunit );
 
+        output_to_file += fmt::format( empty_line );
         output_to_file += fmt::format( "# xmin: {}\n", segment->bounds_min[0] );
         output_to_file += fmt::format( "# ymin: {}\n", segment->bounds_min[1] );
         output_to_file += fmt::format( "# zmin: {}\n", segment->bounds_min[2] );
@@ -235,25 +257,56 @@ namespace write
         output_to_file += fmt::format( empty_line );
 
         // TODO: this ovf library does not support irregular geometry yet. Write ONLY rectangular mesh
-        output_to_file += fmt::format( "# meshtype: rectangular\n" );
+        std::string meshtype = segment->meshtype;
+        if( meshtype == "" )
+            meshtype = "rectangular";
+        output_to_file += fmt::format( "# meshtype: {}\n", meshtype );
 
-        // Latice origin in space
-        output_to_file += fmt::format( "# xbase: {}\n", segment->origin[0] );
-        output_to_file += fmt::format( "# ybase: {}\n", segment->origin[1] );
-        output_to_file += fmt::format( "# zbase: {}\n", segment->origin[2] );
+        int n_rows = 0;
+        if( meshtype == "rectangular" )
+        {
+            // Latice origin in space
+            output_to_file += fmt::format( "# xbase: {}\n", segment->origin[0] );
+            output_to_file += fmt::format( "# ybase: {}\n", segment->origin[1] );
+            output_to_file += fmt::format( "# zbase: {}\n", segment->origin[2] );
 
-        // output_to_file += fmt::format( "# xstepsize: {}\n",
-        //                             segment->lattice_constant * segment->bravais_vectors[0][0] );
-        // output_to_file += fmt::format( "# ystepsize: {}\n",
-        //                             segment->lattice_constant * segment->bravais_vectors[1][1] );
-        // output_to_file += fmt::format( "# zstepsize: {}\n",
-        //                             segment->lattice_constant * segment->bravais_vectors[2][2] );
+            // Mesh spacing
+            output_to_file += fmt::format( "# xstepsize: {}\n", segment->step_size[0] );
+            output_to_file += fmt::format( "# ystepsize: {}\n", segment->step_size[1] );
+            output_to_file += fmt::format( "# zstepsize: {}\n", segment->step_size[2] );
 
-        output_to_file += fmt::format( "# xnodes: {}\n", segment->n_cells[0] );
-        output_to_file += fmt::format( "# ynodes: {}\n", segment->n_cells[1] );
-        output_to_file += fmt::format( "# znodes: {}\n", segment->n_cells[2] );
+            // Number of nodes along each direction
+            output_to_file += fmt::format( "# xnodes: {}\n", segment->n_cells[0] );
+            output_to_file += fmt::format( "# ynodes: {}\n", segment->n_cells[1] );
+            output_to_file += fmt::format( "# znodes: {}\n", segment->n_cells[2] );
+
+            n_rows = segment->n_cells[0]*segment->n_cells[1]*segment->n_cells[2];
+        }
+        else if( std::string(segment->meshtype) == "irregular" )
+        {
+            output_to_file += fmt::format( "# pointcount: {}\n", segment->pointcount );
+            n_rows = segment->pointcount;
+        }
+        else
+        {
+            file->_state->message_latest = fmt::format(
+                "write_segment not writing out any data to file \"{}\", because meshtype is invalid: \"{}\". You may want to check the segment you passed in.",
+                file->file_name, segment->meshtype);
+            return OVF_ERROR;
+        }
+
+        int n_cols = segment->valuedim;
+
+        // Check that we actually read in any data
+        if( n_cols*n_rows <= 0 )
+        {
+            file->_state->message_latest = fmt::format(
+                "write_segment not writing out any data, because n_cols*n_rows={}*{}<=0 for file \"{}\". You may want to check the segment you passed in.",
+                n_cols, n_rows, file->file_name);
+            return OVF_ERROR;
+        }
+
         output_to_file += fmt::format( empty_line );
-
         output_to_file += fmt::format( "# End: Header\n" );
         output_to_file += fmt::format( empty_line );
 
@@ -274,18 +327,6 @@ namespace write
 
         // Data
         output_to_file += fmt::format( "# Begin: Data {}\n", datatype_out );
-
-        int n_rows = segment->n_cells[0]*segment->n_cells[1]*segment->n_cells[2];
-        int n_cols = segment->valuedim;
-
-        // Check that we actually read in any data
-        if( n_cols*n_rows <= 0 )
-        {
-            file->_state->message_latest = fmt::format(
-                "write_segment not writing out any data, because n_cols*n_rows={}*{}<=0 for file \"{}\". You may want to check the segment you passed in.",
-                n_cols, n_rows, file->file_name);
-            return OVF_ERROR;
-        }
 
         if ( format == OVF_FORMAT_BIN || format == OVF_FORMAT_BIN8 || format == OVF_FORMAT_BIN4 )
             append_data_bin_to_string( output_to_file, vf, n_cols, n_rows, format );

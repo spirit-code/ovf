@@ -260,23 +260,24 @@ Segments
     - The value consists of all characters after the first colon (`:`) up to a comment (`##`) or line ending
 - The order of keywords is not specified
 - None of the keywords have default values, so all are required unless stated otherwise
-- Everything inside the `Header` block should be either comments or one of the following file keyword lines
-    - `title`: long file name or title
-    - `desc`: description line, use as many as desired
-    - `meshunit`: fundamental mesh spatial unit. The comment marker `##` is not allowed in this line. Example value: `nm`
-    - `valueunits`: should be a (Tcl) list of value units. The comment marker `##` is not allowed in this line. Example value: `"kA/m"`. The length of the list should be one of
-        - `N`: each element denotes the units for the corresponding dimension index
-        - `1`: the single element is applied to all dimension indexes
-    - `valuelabels`: This should be a `N`-item (Tcl) list of value labels, one for each value dimension. The labels identify the quantity in each dimension. For example, in an energy density file, `N` would be `1`, valueunits could be `"J/m3"`, and valuelabels might be `"Exchange energy density"`
-    - `valuedim` (integer): specifies an integer value, `N`, which is the dimensionality of the field. `N >= 1`
-    - `xmin`, `ymin`, `zmin`, `xmax`, `ymax`, `zmax`: six separate lines, specifying the bounding box for the mesh, in units of `meshunit`
-    - `meshtype`: grid structure; should be either
-        - `rectangular`: requires also `xbase`, `ybase`, `zbase`, `xstepsize`, `ystepsize`, `zstepsize`, and `xnodes`, `ynodes`, `znodes`
-        - `irregular`: requires also `pointcount`
-    - `xbase`, `ybase`, `zbase`: three separate lines, denoting the origin (i.e. the position of the first point in the data section), in units of `meshunit`. For rectangular grids only
-    - `xstepsize`, `ystepsize`, `zstepsize`: three separate lines, specifying the distance between adjacent grid points, in units of `meshunit`. For rectangular grids only
-    - `xnodes`, `ynodes`, `znodes` (integers): three separate lines, specifying the number of nodes along each axis. For rectangular grids only
-    - `pointcount` (integer): number of data sample points/locations, i.e., nodes. For irregular grids only
+
+Everything inside the `Header` block should be either comments or one of the following file keyword lines
+- `title`: long file name or title
+- `desc` (optional): description line, use as many as desired
+- `meshunit`: fundamental mesh spatial unit. The comment marker `##` is not allowed in this line. Example value: `nm`
+- `valueunits`: should be a (Tcl) list of value units. The comment marker `##` is not allowed in this line. Example value: `"kA/m"`. The length of the list should be one of
+    - `N`: each element denotes the units for the corresponding dimension index
+    - `1`: the single element is applied to all dimension indexes
+- `valuelabels`: This should be a `N`-item (Tcl) list of value labels, one for each value dimension. The labels identify the quantity in each dimension. For example, in an energy density file, `N` would be `1`, valueunits could be `"J/m3"`, and valuelabels might be `"Exchange energy density"`
+- `valuedim` (integer): specifies an integer value, `N`, which is the dimensionality of the field. `N >= 1`
+- `xmin`, `ymin`, `zmin`, `xmax`, `ymax`, `zmax`: six separate lines, specifying the bounding box for the mesh, in units of `meshunit`
+- `meshtype`: grid structure; one of
+    - `rectangular`: Requires also
+        - `xbase`, `ybase`, `zbase`: three separate lines, denoting the origin (i.e. the position of the first point in the data section), in units of `meshunit`
+        - `xstepsize`, `ystepsize`, `zstepsize`: three separate lines, specifying the distance between adjacent grid points, in units of `meshunit`
+        - `xnodes`, `ynodes`, `znodes` (integers): three separate lines, specifying the number of nodes along each axis.
+    - `irregular`: Requires also
+        - `pointcount` (integer): number of data sample points/locations, i.e., nodes. For irregular grids only
 
 
 **Segment Data**
@@ -302,18 +303,20 @@ These extensions are mainly to help with data for atomistic systems.
 
 - The segment count is padded to 6 digits with zeros (this is so that segments can be appended and the count incremented without having to re-write the entire file)
 - Lines starting with a `#` but containing an unknown keyword are ignored.
+- `##` is always a comment and is allowed in all keyword lines, including `meshunit` and `valueunits`
 - All keywords have default values, so none are required
-<!-- - `xnodes`, `ynodes`, `znodes`: for an `irregular` grid, the entire grid will be repeated? -->
 - `csv` is also a valid ASCII data representation and corresponds to comma-separated columns of `text` type
 
 
 Current limitations of this library
 ---------------------------------
 
-- file writing may still be incorrect
-- `irregular` meshes are untested and probably not yet implemented adequately
+- naming of variables in structs/classes is inconsistent with the file format specifications
+- not all defaults in the segment are sensible
+- `desc` is not optional
+- `valueunits` and `valueunits` are written and parsed, but not checked for dimensionality or content in either
+- `min` and `max` values are not checked to make sure they are sensible bounds
 - colon `:` has to follow right after each keyword
-- `meshunit`, `valueunits` and `valuelabels` might not function adequately
 - some parsing errors are not yet logged properly
 
 

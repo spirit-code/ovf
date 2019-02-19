@@ -38,7 +38,7 @@ try
         const_cast<char *>(""),   // valueunits
         const_cast<char *>(""),   // valuelabels
         const_cast<char *>(""),   // meshtype
-        const_cast<char *>(""),   // meshunits
+        const_cast<char *>(""),   // meshunit
         0,                        // pointcount
         {0,0,0},                  // n_cells
         0,                        // N

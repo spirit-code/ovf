@@ -392,7 +392,10 @@ namespace parse
             static void apply( const Input& in, ovf_file & file, ovf_segment & segment )
             {
                 // file._state->file_contents.push_back(in.string());
-                segment.N = segment.n_cells[0] * segment.n_cells[1] * segment.n_cells[2];
+                if( std::string(segment.meshtype) == "rectangular" )
+                    segment.N = segment.n_cells[0] * segment.n_cells[1] * segment.n_cells[2];
+                else if( std::string(segment.meshtype) == "irregular" )
+                    segment.N = segment.pointcount;
             }
         };
 
