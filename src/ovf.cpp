@@ -8,7 +8,13 @@ struct ovf_file* ovf_open(const char *filename)
 try
 {
     // Initialize the struct
-    struct ovf_file * ovf_file_ptr = new ovf_file{ strdup(filename), /*version*/ 0, /*found*/ false, /*ovf*/ false, /*n_segments*/ 0, /*handle*/ new parser_state };
+    struct ovf_file * ovf_file_ptr = new ovf_file{
+        /*file_name*/   strdup(filename),
+        /*version*/     0,
+        /*found*/       false,
+        /*is_ovf*/      false,
+        /*n_segments*/  0,
+        /*handle*/      new parser_state };
 
     // Check if the file exists
     std::fstream filestream( filename );
