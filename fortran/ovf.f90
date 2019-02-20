@@ -12,10 +12,11 @@ integer, parameter  :: OVF_FORMAT_CSV  = -57
 
 type, bind(c) :: c_ovf_file
     type(c_ptr)     :: filename
+    integer(c_int)  :: version
     integer(c_int)  :: found
     integer(c_int)  :: is_ovf
     integer(c_int)  :: n_segments
-    type(c_ptr)     :: file_handle
+    type(c_ptr)     :: state
 end type c_ovf_file
 
 type, bind(c) :: c_ovf_segment
@@ -33,23 +34,32 @@ type, bind(c) :: c_ovf_segment
     integer(kind=c_int) :: n_cells(3)
     integer(kind=c_int) :: N
 
+    real(kind=c_float)  :: step_size(3)
     real(kind=c_float)  :: bounds_min(3)
     real(kind=c_float)  :: bounds_max(3)
 
     real(kind=c_float)  :: lattice_constant
-    real(kind=c_float)  :: bravais_vectors(3,3)
+    real(kind=c_float)  :: origin(3)
 end type c_ovf_segment
 
-type :: ovf_segment
-    character(len=:), allocatable :: Title, Comment, ValueUnits, ValueLabels,  MeshType, MeshUnits
-    integer                       :: ValueDim, PointCount, N_Cells(3), N 
-    real(8)                       :: bounds_min(3), bounds_max(3), lattice_constant, bravais_vectors(3,3)
-contains
-    procedure :: initialize       => initialize_segment
-end type ovf_segment 
+! Wrapper used to handle C strings
+type :: ovf_string
+    character(len=:), allocatable :: contents
+end type ovf_string
 
+! Wrapper to handle ovf_segment C struct
+type :: ovf_segment
+    type(ovf_string)        :: Title, Comment, ValueUnits, ValueLabels, MeshType, MeshUnits
+    integer                 :: ValueDim, PointCount, N_Cells(3), N
+    real(8)                 :: step_size(3), bounds_min(3), bounds_max(3), lattice_constant, origin(3)
+contains
+    procedure :: initialize => initialize_segment
+end type ovf_segment
+
+! Wrapper to handle ovf_file C struct
 type :: ovf_file
     character(len=:), allocatable   :: filename
+    integer                         :: version
     logical                         :: found, is_ovf
     integer                         :: n_segments
     character(len=:), allocatable   :: latest_message
@@ -70,7 +80,19 @@ contains
     procedure :: close_file          => close_file
 end type ovf_file
 
+! ovf_string assignment overloads
+public :: assignment (=)
+interface assignment (=)
+    module procedure ovf_string_assign_from
+    module procedure ovf_string_assign_from2
+    module procedure ovf_string_assign_to
+    module procedure ovf_string_assign_to2
+end interface
+
 contains
+
+    !----------------------------------------------
+    !----- Functions to deal with C strings
 
     ! Helper function to generate a Fortran string from a C char pointer
     function get_string(c_pointer) result(f_string)
@@ -79,8 +101,8 @@ contains
         type(c_ptr), intent(in)         :: c_pointer
         character(len=:), allocatable   :: f_string
 
-        character(len=:), pointer       :: f_ptr
         integer(c_size_t)               :: l_str
+        character(len=:), pointer       :: f_ptr
 
         interface
             function c_strlen(str_ptr) bind ( C, name = "strlen" ) result(len)
@@ -90,12 +112,50 @@ contains
             end function c_strlen
         end interface
 
-        call c_f_pointer(c_pointer, f_ptr)
         l_str = c_strlen(c_pointer)
+        call c_f_pointer(c_pointer, f_ptr)
 
         f_string = f_ptr(1:l_str)
     end function get_string
 
+    ! Assign from C string wrapper to Fortran string
+    subroutine ovf_string_assign_from(str_assign, str_in)
+      implicit none
+      character(len=:), allocatable, intent(out)    :: str_assign
+      type(ovf_string), target, intent(in)          :: str_in
+      str_assign = get_string(c_loc(str_in%contents))
+    end subroutine ovf_string_assign_from
+
+    ! Assign from C string wrapper to pointer to C string
+    subroutine ovf_string_assign_from2(str_assign, str_in)
+      implicit none
+      type(c_ptr), intent(out)              :: str_assign
+      type(ovf_string), target, intent(in)  :: str_in
+      str_assign = c_loc(str_in%contents)
+    end subroutine ovf_string_assign_from2
+
+    ! Assign from pointer to C string to C string wrapper
+    subroutine ovf_string_assign_to(str_assign, str_in)
+      implicit none
+      type(ovf_string), intent(out) :: str_assign
+      type(c_ptr), intent(in)       :: str_in
+      str_assign%contents = get_string(str_in) // C_NULL_CHAR
+    end subroutine ovf_string_assign_to
+
+    ! Assign from Fortran string to C string wrapper
+    subroutine ovf_string_assign_to2(str_assign, str_in)
+      implicit none
+      type(ovf_string), intent(out) :: str_assign
+      character(len=*), intent(in)  :: str_in
+      str_assign%contents = str_in // C_NULL_CHAR
+    end subroutine ovf_string_assign_to2
+
+    ! Create C string wrapper from initialisation
+    type(ovf_string) function ovf_string_init(input)
+        character(len=:), allocatable, intent(in) ::  input
+        ovf_string_init%contents = input
+    end function ovf_string_init
+    !----------------------------------------------
 
     ! Helper function to create C-struct c_ovf_secment from Fortran type ovf_segment
     function get_c_ovf_segment(segment) result(c_segment)
@@ -104,12 +164,26 @@ contains
         type(ovf_segment), intent(in), target   :: segment
         type(c_ovf_segment)                     :: c_segment
 
-        c_segment%title      = c_loc(segment%Title)
-        c_segment%comment    = c_loc(segment%Comment)
-        c_segment%valueunits = c_loc(segment%ValueUnits)
-        c_segment%valuedim   = segment%ValueDim
-        c_segment%n_cells(:) = segment%n_cells(:)
-        c_segment%N          = product(segment%n_cells)
+        c_segment%title       = segment%Title
+        c_segment%comment     = segment%Comment
+
+        c_segment%valuedim    = segment%ValueDim
+        c_segment%valueunits  = segment%ValueUnits
+        c_segment%valuelabels = segment%ValueLabels
+        
+        c_segment%meshtype    = segment%MeshType
+        c_segment%meshunits   = segment%MeshUnits
+        c_segment%pointcount  = segment%PointCount
+
+        c_segment%n_cells(:)  = segment%n_cells(:)
+        c_segment%N           = product(segment%n_cells)
+
+        c_segment%step_size(:)  = segment%step_size(:)
+        c_segment%bounds_min(:) = segment%bounds_min(:)
+        c_segment%bounds_max(:) = segment%bounds_max(:)
+
+        c_segment%lattice_constant = segment%lattice_constant
+        c_segment%origin(:) = segment%origin(:)
     end function get_c_ovf_segment
 
 
@@ -120,18 +194,18 @@ contains
         type(c_ovf_segment), intent(in)    :: c_segment
         type(ovf_segment),   intent(inout) :: segment
 
-        segment%Title      = get_string(c_segment%title)
-        segment%Comment    = get_string(c_segment%comment)
+        segment%Title       = c_segment%title
+        segment%Comment     = c_segment%comment
 
-        segment%ValueLabels = get_string(c_segment%valuelabels)
-        segment%ValueUnits = get_string(c_segment%valueunits)
-        segment%ValueDim   = c_segment%valuedim
+        segment%ValueLabels = c_segment%valuelabels
+        segment%ValueUnits  = c_segment%valueunits
+        segment%ValueDim    = c_segment%valuedim
 
-        segment%MeshUnits = get_string(c_segment%meshunits)
-        segment%MeshType = get_string(c_segment%meshtype)
+        segment%MeshUnits   = c_segment%meshunits
+        segment%MeshType    = c_segment%meshtype
 
-        segment%N_Cells(:) = c_segment%n_cells(:)
-        segment%N          = product(c_segment%n_cells)
+        segment%N_Cells(:)  = c_segment%n_cells(:)
+        segment%N           = product(c_segment%n_cells)
     end subroutine fill_ovf_segment
 
 
@@ -159,9 +233,9 @@ contains
 
     subroutine update(self)
         implicit none
-        class(ovf_file)                 :: self
+        class(ovf_file)             :: self
 
-        type(c_ovf_file), pointer       :: c_file
+        type(c_ovf_file), pointer   :: c_file
 
         call c_f_pointer(self%private_file_binding, c_file)
         self%found      = c_file%found  == 1
@@ -180,7 +254,7 @@ contains
 
         interface
             function ovf_open(filename) &
-                            bind ( C, name = "ovf_open" ) 
+                            bind ( C, name = "ovf_open" )
             use, intrinsic :: iso_c_binding
                 character(len=1,kind=c_char)    :: filename(*)
                 type(c_ptr)                     :: ovf_open
@@ -191,7 +265,7 @@ contains
         self%private_file_binding = c_file_ptr
 
         call c_f_pointer(self%private_file_binding, c_file)
-        self%filename   = get_string(c_file%filename)
+        self%filename = get_string(c_file%filename)
 
         call self%update()
     end subroutine open_file
@@ -206,7 +280,7 @@ contains
 
         interface
             function ovf_segment_initialize() &
-                bind ( C, name = "ovf_segment_initialize" ) 
+                bind ( C, name = "ovf_segment_initialize" )
             use, intrinsic :: iso_c_binding
                 type(c_ptr) :: ovf_segment_initialize
             end function ovf_segment_initialize
@@ -238,7 +312,7 @@ contains
             use, intrinsic :: iso_c_binding
             Import :: c_ovf_file, c_ovf_segment
                 type(c_ptr), value              :: file
-                integer(kind=c_int), value      :: index 
+                integer(kind=c_int), value      :: index
                 type(c_ptr), value              :: segment
                 integer(kind=c_int)             :: success
             end function ovf_read_segment_header
