@@ -130,6 +130,7 @@ TEST_CASE( "Read", "[read]" )
         int success = ovf_read_segment_header(file, index, segment);
         if( OVF_OK != success )
             std::cerr << ovf_latest_message(file) << std::endl;
+        REQUIRE( success == OVF_OK );
         REQUIRE( segment->N == 4 );
         REQUIRE( std::string(segment->meshtype) == "rectangular" );
 
@@ -165,6 +166,7 @@ TEST_CASE( "Read", "[read]" )
         int success = ovf_read_segment_header(file, index, segment);
         if( OVF_OK != success )
             std::cerr << ovf_latest_message(file) << std::endl;
+        REQUIRE( success == OVF_OK );
         REQUIRE( segment->N == 4 );
         REQUIRE( std::string(segment->meshtype) == "rectangular" );
 
@@ -200,6 +202,7 @@ TEST_CASE( "Read", "[read]" )
         int success = ovf_read_segment_header(file, index, segment);
         if( OVF_OK != success )
             std::cerr << ovf_latest_message(file) << std::endl;
+        REQUIRE( success == OVF_OK );
         REQUIRE( segment->N == 4 );
         REQUIRE( std::string(segment->meshtype) == "irregular" );
         REQUIRE( segment->pointcount == 4 );

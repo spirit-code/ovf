@@ -21,6 +21,30 @@ struct parser_state
 
     std::string keyword="", value="";
 
+    // Whether certain keywords were found in parsing
+    bool found_title        = false;
+    bool found_meshunit     = false;
+    bool found_valuedim     = false;
+    bool found_valueunits   = false;
+    bool found_valuelabels  = false;
+    bool found_xmin         = false;
+    bool found_ymin         = false;
+    bool found_zmin         = false;
+    bool found_xmax         = false;
+    bool found_ymax         = false;
+    bool found_zmax         = false;
+    bool found_meshtype     = false;
+    bool found_xbase        = false;
+    bool found_ybase        = false;
+    bool found_zbase        = false;
+    bool found_xstepsize    = false;
+    bool found_ystepsize    = false;
+    bool found_zstepsize    = false;
+    bool found_xnodes       = false;
+    bool found_ynodes       = false;
+    bool found_znodes       = false;
+    bool found_pointcount   = false;
+
     /*
     messages, e.g. in case a function returned OVF_ERROR.
     message_out will be filled and returned by ovf_latest_message, while message_latest
@@ -110,9 +134,7 @@ namespace parse
         }
     };
 
-
     //////////////////////////
-
 
     namespace v2
     {
@@ -277,7 +299,6 @@ namespace parse
             : tao::pegtl::uint64_le::any
         {};
 
-
         //////////////////////////////////////////////
 
         // Vector3 of floating point values
@@ -297,9 +318,6 @@ namespace parse
 
         //////////////////////////////////////////////
 
-
-        // TODO: use sor<......> to allow a specific set of keywords
-        //       and use proper error reporting, throwing unknown keywords
         struct keyword
             : pegtl::until< pegtl::at<TAO_PEGTL_ISTRING(":")>,
                 pegtl::if_must<pegtl::not_at<pegtl::eol>, pegtl::any> >//, pegtl::not_at<pegtl::sor<pegtl::eol, TAO_PEGTL_ISTRING("##")>> >
@@ -332,7 +350,6 @@ namespace parse
             >
         {};
 
-
         //
         struct segment
             : pegtl::seq<
@@ -345,7 +362,6 @@ namespace parse
                 // pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
                 pegtl::until<pegtl::seq<end, TAO_PEGTL_ISTRING("Segment")>>, pegtl::eol >
         {};
-
 
         // Class template for user-defined actions that does nothing by default.
         template< typename Rule >
@@ -362,7 +378,6 @@ namespace parse
                 file._state->file_contents.push_back(in.string());
             }
         };
-
 
         //////////////////////////////////////////////
 
@@ -391,11 +406,69 @@ namespace parse
             template< typename Input >
             static void apply( const Input& in, ovf_file & file, ovf_segment & segment )
             {
-                // file._state->file_contents.push_back(in.string());
+                // Check if all required keywords were present
+                std::vector<std::string> missing_keywords(0);
+                if( !file._state->found_title )
+                    missing_keywords.push_back("title");
+                if( !file._state->found_meshunit )
+                    missing_keywords.push_back("meshunit");
+                if( !file._state->found_valueunits )
+                    missing_keywords.push_back("valueunits");
+                if( !file._state->found_valuelabels )
+                    missing_keywords.push_back("valuelabels");
+                if( !file._state->found_xmin )
+                    missing_keywords.push_back("xmin");
+                if( !file._state->found_ymin )
+                    missing_keywords.push_back("ymin");
+                if( !file._state->found_zmin )
+                    missing_keywords.push_back("zmin");
+                if( !file._state->found_xmax )
+                    missing_keywords.push_back("xmax");
+                if( !file._state->found_ymax )
+                    missing_keywords.push_back("ymax");
+                if( !file._state->found_zmax )
+                    missing_keywords.push_back("zmax");
+                if( !file._state->found_meshtype )
+                    missing_keywords.push_back("meshtype");
+
                 if( std::string(segment.meshtype) == "rectangular" )
+                {
                     segment.N = segment.n_cells[0] * segment.n_cells[1] * segment.n_cells[2];
+
+                    if( !file._state->found_xbase )
+                        missing_keywords.push_back("xbase");
+                    if( !file._state->found_ybase )
+                        missing_keywords.push_back("ybase");
+                    if( !file._state->found_zbase )
+                        missing_keywords.push_back("zbase");
+                    if( !file._state->found_xstepsize )
+                        missing_keywords.push_back("xstepsize");
+                    if( !file._state->found_ystepsize )
+                        missing_keywords.push_back("ystepsize");
+                    if( !file._state->found_zstepsize )
+                        missing_keywords.push_back("zstepsize");
+                    if( !file._state->found_xnodes )
+                        missing_keywords.push_back("xnodes");
+                    if( !file._state->found_ynodes )
+                        missing_keywords.push_back("ynodes");
+                    if( !file._state->found_znodes )
+                        missing_keywords.push_back("znodes");
+                }
                 else if( std::string(segment.meshtype) == "irregular" )
+                {
                     segment.N = segment.pointcount;
+
+                    if( !file._state->found_pointcount )
+                        missing_keywords.push_back("pointcount");
+                }
+
+                if( missing_keywords.size() > 0 )
+                {
+                    std::string message = fmt::format( "Missing keywords: \"{}\"", missing_keywords[0] );
+                    for( int i=1; i < missing_keywords.size(); ++i )
+                        message += fmt::format( ", \"{}\"", missing_keywords[i] );
+                    throw tao::pegtl::parse_error( message, in );
+                }
             }
         };
 
@@ -411,9 +484,8 @@ namespace parse
             }
         };
 
-
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //
+
         template<>
         struct ovf_segment_header_action< keyword >
         {
@@ -425,6 +497,7 @@ namespace parse
                 std::transform(f._state->keyword.begin(), f._state->keyword.end(),f._state->keyword.begin(), ::tolower);
             }
         };
+
         template<>
         struct ovf_segment_header_action< value >
         {
@@ -436,6 +509,7 @@ namespace parse
                 std::transform(f._state->value.begin(), f._state->value.end(),f._state->value.begin(), ::tolower);
             }
         };
+
         template<>
         struct ovf_segment_header_action< keyword_value_line >
         {
@@ -443,31 +517,62 @@ namespace parse
             static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
             {
                 if( f._state->keyword == "title" )
+                {
                     segment.title = strdup(f._state->value.c_str());
+                    f._state->found_title = true;
+                }
                 else if( f._state->keyword == "desc" )
                     segment.comment = strdup(f._state->value.c_str());
                 else if( f._state->keyword == "meshunit" )
+                {
                     segment.meshunit = strdup(f._state->value.c_str());
-                else if( f._state->keyword == "valueunits" )
-                    segment.valueunits = strdup(f._state->value.c_str());
-                else if( f._state->keyword == "valuelabels" )
-                    segment.valuelabels = strdup(f._state->value.c_str());
-                else if( f._state->keyword == "valueunits" )
-                    segment.valueunits = strdup(f._state->value.c_str());
+                    f._state->found_meshunit = true;
+                }
                 else if( f._state->keyword == "valuedim" )
+                {
                     segment.valuedim = std::stoi(f._state->value.c_str());
+                    f._state->found_valuedim = true;
+                }
+                else if( f._state->keyword == "valueunits" )
+                {
+                    segment.valueunits = strdup(f._state->value.c_str());
+                    f._state->found_valueunits = true;
+                }
+                else if( f._state->keyword == "valuelabels" )
+                {
+                    segment.valuelabels = strdup(f._state->value.c_str());
+                    f._state->found_valuelabels = true;
+                }
                 else if( f._state->keyword == "xmin" )
+                {
                     segment.bounds_min[0] = std::stof(f._state->value.c_str());
+                    f._state->found_xmin = true;
+                }
                 else if( f._state->keyword == "ymin" )
+                {
                     segment.bounds_min[1] = std::stof(f._state->value.c_str());
+                    f._state->found_ymin = true;
+                }
                 else if( f._state->keyword == "zmin" )
+                {
                     segment.bounds_min[2] = std::stof(f._state->value.c_str());
+                    f._state->found_zmin = true;
+                }
                 else if( f._state->keyword == "xmax" )
+                {
                     segment.bounds_max[0] = std::stof(f._state->value.c_str());
+                    f._state->found_xmax = true;
+                }
                 else if( f._state->keyword == "ymax" )
+                {
                     segment.bounds_max[1] = std::stof(f._state->value.c_str());
+                    f._state->found_ymax = true;
+                }
                 else if( f._state->keyword == "zmax" )
+                {
                     segment.bounds_max[2] = std::stof(f._state->value.c_str());
+                    f._state->found_zmax = true;
+                }
                 else if( f._state->keyword == "meshtype" )
                 {
                     if( std::string(segment.meshtype) == "" )
@@ -483,7 +588,7 @@ namespace parse
                             "meshtype \"{}\" was specified, but due to other parameters specified before, \"{}\" was expected!",
                             f._state->value, segment.meshtype), in );
                     }
-
+                    f._state->found_meshtype = true;
                 }
                 else if( f._state->keyword == "xbase" )
                 {
@@ -493,6 +598,7 @@ namespace parse
                         throw tao::pegtl::parse_error( fmt::format(
                             "xbase is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
                     segment.origin[0] = std::stof(f._state->value.c_str());
+                    f._state->found_xbase = true;
                 }
                 else if( f._state->keyword == "ybase" )
                 {
@@ -502,6 +608,7 @@ namespace parse
                         throw tao::pegtl::parse_error( fmt::format(
                             "ybase is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
                     segment.origin[1] = std::stof(f._state->value.c_str());
+                    f._state->found_ybase = true;
                 }
                 else if( f._state->keyword == "zbase" )
                 {
@@ -511,6 +618,7 @@ namespace parse
                         throw tao::pegtl::parse_error( fmt::format(
                             "zbase is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
                     segment.origin[2] = std::stof(f._state->value.c_str());
+                    f._state->found_zbase = true;
                 }
                 else if( f._state->keyword == "xstepsize" )
                 {
@@ -520,6 +628,7 @@ namespace parse
                         throw tao::pegtl::parse_error( fmt::format(
                             "xstepsize is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
                     segment.step_size[0] = std::stof(f._state->value.c_str());
+                    f._state->found_xstepsize = true;
                 }
                 else if( f._state->keyword == "ystepsize" )
                 {
@@ -529,6 +638,7 @@ namespace parse
                         throw tao::pegtl::parse_error( fmt::format(
                             "ystepsize is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
                     segment.step_size[1] = std::stof(f._state->value.c_str());
+                    f._state->found_ystepsize = true;
                 }
                 else if( f._state->keyword == "zstepsize" )
                 {
@@ -538,9 +648,8 @@ namespace parse
                         throw tao::pegtl::parse_error( fmt::format(
                             "zstepsize is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
                     segment.step_size[2] = std::stof(f._state->value.c_str());
+                    f._state->found_zstepsize = true;
                 }
-                else if( f._state->keyword == "meshunit" )
-                    segment.meshunit = strdup(f._state->value.c_str());
                 else if( f._state->keyword == "xnodes" )
                 {
                     if( std::string(segment.meshtype) == "" )
@@ -549,6 +658,7 @@ namespace parse
                         throw tao::pegtl::parse_error( fmt::format(
                             "xnodes is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
                     segment.n_cells[0] = std::stoi(f._state->value.c_str());
+                    f._state->found_xnodes = true;
                 }
                 else if( f._state->keyword == "ynodes" )
                 {
@@ -558,6 +668,7 @@ namespace parse
                         throw tao::pegtl::parse_error( fmt::format(
                             "ynodes is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
                     segment.n_cells[1] = std::stoi(f._state->value.c_str());
+                    f._state->found_ynodes = true;
                 }
                 else if( f._state->keyword == "znodes" )
                 {
@@ -567,6 +678,7 @@ namespace parse
                         throw tao::pegtl::parse_error( fmt::format(
                             "znodes is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
                     segment.n_cells[2] = std::stoi(f._state->value.c_str());
+                    f._state->found_znodes = true;
                 }
                 else if( f._state->keyword == "pointcount" )
                 {
@@ -574,6 +686,7 @@ namespace parse
                         throw tao::pegtl::parse_error( fmt::format(
                             "pointcount is only for irregular meshes! Mesh type is \"{}\"", segment.meshtype), in );
                     segment.pointcount = std::stoi(f._state->value.c_str());
+                    f._state->found_pointcount = true;
                 }
                 else
                 {
@@ -608,14 +721,7 @@ namespace parse
         struct data_binary_4
             : pegtl::seq<
                 begin, TAO_PEGTL_ISTRING("Data Binary 4"), pegtl::eol,
-                // TODO
-                // pegtl::plus< line_data_bin_4, pegtl::eol >,
-                // pegtl::until<pegtl::seq<end, TAO_PEGTL_ISTRING("Data Binary 4")>>, pegtl::eol
                 bin_4_check_value,
-                // data_block_4,// pegtl::eol,
-                // pegtl::until< pegtl::eol, pegtl::plus<bin_4_value> >,
-                // pegtl::plus<pegtl::if_then_else< pegtl::not_at<pegtl::eol>, bin_4_value, pegtl::eol >>,
-                // pegtl::seq< pegtl::star< pegtl::not_at< pegtl::eol >, pegtl::not_at< pegtl::eof >, bin_4_value >, pegtl::eol >,
                 pegtl::until< pegtl::eol, bin_4_value >,
                 end, TAO_PEGTL_ISTRING("Data Binary 4"), pegtl::eol
                 >
@@ -624,9 +730,6 @@ namespace parse
         struct data_binary_8
             : pegtl::seq<
                 begin, TAO_PEGTL_ISTRING("Data Binary 8"), pegtl::eol,
-                // TODO
-                // pegtl::plus< line_data_bin_8, pegtl::eol >,
-                // end, TAO_PEGTL_ISTRING("Data Binary 8"), pegtl::eol
                 bin_8_check_value,
                 pegtl::until< pegtl::eol, bin_8_value >,
                 end, TAO_PEGTL_ISTRING("Data Binary 8"), pegtl::eol
@@ -704,7 +807,6 @@ namespace parse
                 ++f._state->current_column;
             }
         };
-
 
         template<>
         struct ovf_segment_data_action< bin_4_check_value >

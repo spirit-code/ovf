@@ -185,13 +185,6 @@ try
         return OVF_ERROR;
     }
 
-    // TODO: parse binary length correctly
-    // if (file.binary_length != 4)
-    // {
-    //     ovf_file_ptr->_state->message_latest = "libovf ovf_read_segment_data_4: file does not have binary length 4...";
-    //     return OVF_ERROR;
-    // }
-
     int retcode = ovf::detail::parse::segment_data(*ovf_file_ptr, index, *segment, data);
     if( retcode != OVF_OK )
         ovf_file_ptr->_state->message_latest += "\novf_read_segment_data_4 failed.";
@@ -253,13 +246,6 @@ try
             index, ovf_file_ptr->n_segments, ovf_file_ptr->file_name);
         return OVF_ERROR;
     }
-
-    // TODO: parse binary length correctly
-    // if (file.binary_length != 8)
-    // {
-    //     ovf_file_ptr->_state->message_latest = "libovf ovf_read_segment_8: file does not have binary length 4...";
-    //     return OVF_ERROR;
-    // }
 
     int retcode = ovf::detail::parse::segment_data(*ovf_file_ptr, index, *segment, data);
     if (retcode != OVF_OK)

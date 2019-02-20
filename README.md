@@ -312,8 +312,7 @@ Current limitations of this library
 ---------------------------------
 
 - naming of variables in structs/classes is inconsistent with the file format specifications
-- not all defaults in the segment are sensible
-- `desc` is not optional
+- not all defaults in the segment are guaranteed to be sensible
 - `valueunits` and `valuelabels` are written and parsed, but not checked for dimensionality or content in either
 - `min` and `max` values are not checked to make sure they are sensible bounds
 

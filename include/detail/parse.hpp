@@ -27,7 +27,6 @@ namespace parse
     */
     static const int n_segments_str_digits = 6;
 
-
     /*
     Parse the overall file header and locate the segment count, if present.
     */
@@ -58,7 +57,6 @@ namespace parse
         file._state->message_latest = "libovf initial: unknown exception";
         return OVF_ERROR;
     }
-
 
     /*
     Read the overall file header and locate and count segments in the file
@@ -137,12 +135,33 @@ namespace parse
         return OVF_ERROR;
     }
 
-
     // Reads in the header info into a given segment
     inline int segment_header(ovf_file & file, int index, ovf_segment & segment)
     try
     {
         pegtl::memory_input<> in( file._state->file_contents[index], "" );
+        file._state->found_title        = false;
+        file._state->found_meshunit     = false;
+        file._state->found_valuedim     = false;
+        file._state->found_valueunits   = false;
+        file._state->found_valuelabels  = false;
+        file._state->found_xmin         = false;
+        file._state->found_ymin         = false;
+        file._state->found_zmin         = false;
+        file._state->found_xmax         = false;
+        file._state->found_ymax         = false;
+        file._state->found_zmax         = false;
+        file._state->found_meshtype     = false;
+        file._state->found_xbase        = false;
+        file._state->found_ybase        = false;
+        file._state->found_zbase        = false;
+        file._state->found_xstepsize    = false;
+        file._state->found_ystepsize    = false;
+        file._state->found_zstepsize    = false;
+        file._state->found_xnodes       = false;
+        file._state->found_ynodes       = false;
+        file._state->found_znodes       = false;
+        file._state->found_pointcount   = false;
         bool success = false;
 
         if( file.version == 2 )
@@ -202,7 +221,7 @@ namespace parse
         return OVF_ERROR;
     }
 
-    // // Reads the data of a segment into a given data array (float)
+    // Reads the data of a segment into a given data array (float)
     template<typename scalar>
     int segment_data(ovf_file & file, int index, const ovf_segment & segment, scalar * data)
     try
