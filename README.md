@@ -315,6 +315,7 @@ Current limitations of this library
 - not all defaults in the segment are guaranteed to be sensible
 - `valueunits` and `valuelabels` are written and parsed, but not checked for dimensionality or content in either
 - `min` and `max` values are not checked to make sure they are sensible bounds
+- `irregular` mesh type is not supported properly, as positions are not accounted for in read or write
 
 
 Example

@@ -2,6 +2,8 @@
 #ifndef LIBOVF_H
 #define LIBOVF_H
 
+#include <stdbool.h>
+
 // Platform-specific definition of DLLEXPORT
 #ifdef _WIN32
     #ifdef __cplusplus
@@ -66,9 +68,9 @@ struct ovf_file {
     int version;
 
     /* file could be found */
-    int found;
+    bool found;
     /* file contains an ovf header */
-    int is_ovf;
+    bool is_ovf;
     /* number of segments the file should contain */
     int n_segments;
 

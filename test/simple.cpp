@@ -7,6 +7,9 @@
 TEST_CASE( "NonExistent", "[nonexistent]" )
 {
     auto file = ovf_open("nonexistent.ovf");
+    REQUIRE( file->found == false );
+    REQUIRE( file->is_ovf == false );
+    REQUIRE( file->n_segments == 0 );
     ovf_segment segment;
     int success = ovf_read_segment_header(file, 0, &segment);
     REQUIRE( success == OVF_ERROR );
@@ -118,13 +121,15 @@ TEST_CASE( "Read", "[read]" )
 
     SECTION( "first segment" )
     {
-        // segment header
-        auto segment = ovf_segment_initialize();
-
         // open
         auto file = ovf_open(testfile);
+        REQUIRE( file->found == true );
+        REQUIRE( file->is_ovf == true );
         REQUIRE( file->n_segments == 3 );
         int index = 0;
+
+        // segment header
+        auto segment = ovf_segment_initialize();
 
         // read header
         int success = ovf_read_segment_header(file, index, segment);
@@ -154,13 +159,13 @@ TEST_CASE( "Read", "[read]" )
 
     SECTION( "second segment" )
     {
-        // segment header
-        auto segment = ovf_segment_initialize();
-
         // open
         auto file = ovf_open(testfile);
         REQUIRE( file->n_segments == 3 );
         int index = 1;
+
+        // segment header
+        auto segment = ovf_segment_initialize();
 
         // read header
         int success = ovf_read_segment_header(file, index, segment);
@@ -190,13 +195,13 @@ TEST_CASE( "Read", "[read]" )
 
     SECTION( "third segment" )
     {
-        // segment header
-        auto segment = ovf_segment_initialize();
-
         // open
         auto file = ovf_open(testfile);
         REQUIRE( file->n_segments == 3 );
         int index = 2;
+
+        // segment header
+        auto segment = ovf_segment_initialize();
 
         // read header
         int success = ovf_read_segment_header(file, index, segment);

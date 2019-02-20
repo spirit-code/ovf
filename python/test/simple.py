@@ -18,7 +18,12 @@ class TestState(unittest.TestCase):
         with ovf.ovf_file("nonexistent.ovf") as ovf_file:
             print("found:      ", ovf_file.found)
             print("is_ovf:     ", ovf_file.is_ovf)
+            print("version:    ", ovf_file.version)
             print("n_segments: ", ovf_file.n_segments)
+            self.assertTrue( ovf_file.found == False )
+            self.assertTrue( ovf_file.is_ovf == False )
+            self.assertTrue( ovf_file.version == 0 )
+            self.assertTrue( ovf_file.n_segments == 0 )
             segment = ovf.ovf_segment()
             success = ovf_file.read_segment_header(0, segment)
             if success != ovf.OK:
@@ -34,8 +39,8 @@ class TestState(unittest.TestCase):
             segment = ovf.ovf_segment(
                 title="python write test",
                 comment="more details in this comment...",
-                n_cells=[2,2,1],
-                valuedim=3)
+                valuedim=3,
+                n_cells=[2,2,1])
             success = ovf_file.write_segment(segment, data)
             if success != ovf.OK:
                 print("write_segment failed: ", ovf_file.get_latest_message())
@@ -52,7 +57,12 @@ class TestState(unittest.TestCase):
         with ovf.ovf_file("testfile_py.ovf") as ovf_file:
             print("found:      ", ovf_file.found)
             print("is_ovf:     ", ovf_file.is_ovf)
+            print("version:    ", ovf_file.version)
             print("n_segments: ", ovf_file.n_segments)
+            self.assertTrue( ovf_file.found == True )
+            self.assertTrue( ovf_file.is_ovf == True )
+            self.assertTrue( ovf_file.version == 2 )
+            self.assertTrue( ovf_file.n_segments == 2 )
             segment = ovf.ovf_segment()
             success = ovf_file.read_segment_header(0, segment)
             if success != ovf.OK:
