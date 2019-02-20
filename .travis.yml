@@ -1,5 +1,5 @@
 sudo: required
-dist: trusty
+dist: xenial
 language: cpp
 
 
@@ -23,23 +23,23 @@ matrix:
     - os: osx
       osx_image: xcode8
       env: CMAKE_OPTIONS="-DOVF_BUILD_FORTRAN_BINDINGS=OFF" PYPI=true
-    # Linux, GCC 6
+    # Linux, GCC 7
     - os: linux
-      env: COMPILER_C=gcc-6 COMPILER_CXX=g++-6 COMPILER_FORTRAN=gfortran-6 CMAKE_OPTIONS="" PYPI=true
+      env: COMPILER_C=gcc-7 COMPILER_CXX=g++-7 COMPILER_FORTRAN=gfortran-7 CMAKE_OPTIONS="" PYPI=true
       compiler: g++
       addons:
         apt:
           packages:
-          - g++-6
-          - gfortran-6
+          - g++-7
+          - gfortran-7
           - ca-certificates
           - python2.7
           sources:
           - sourceline: 'ppa:ubuntu-toolchain-r/test'
           - sourceline: 'ppa:jonathonf/python-2.7'
-    # Linux, GCC 5.1
+    # Linux, GCC 5
     - os: linux
-      env: COMPILER_C=gcc-5 COMPILER_CXX=g++-5 COMPILER_FORTRAN=gfortran-5 CMAKE_OPTIONS="" PYPI=false
+      env: COMPILER_C=gcc-5 COMPILER_CXX=g++-5 CMAKE_OPTIONS="-DOVF_BUILD_FORTRAN_BINDINGS=OFF" PYPI=false
       compiler: g++
       addons:
         apt:
@@ -54,7 +54,6 @@ matrix:
 
 before_install:
   - python --version
-  - if [ "$TRAVIS_OS_NAME" != "osx" ]; then sudo pip uninstall -y six chardet pyOpenSSL; fi
   - sudo pip install --upgrade pip six pyOpenSSL
   - sudo pip install numpy wheel urllib3==1.23 twine coveralls
   # Run homebrew on osx
