@@ -10,6 +10,11 @@
 
 #include <array>
 
+struct max_index_error : public std::runtime_error
+{
+    max_index_error() : std::runtime_error("") {};
+};
+
 struct parser_state
 {
     // For the segment strings
@@ -18,6 +23,7 @@ struct parser_state
     // for reading data blocks
     int current_column = 0;
     int current_line = 0;
+    int bin_data_idx = 0;
 
     std::string keyword="", value="";
 
@@ -52,6 +58,7 @@ struct parser_state
     */
     std::string message_out="", message_latest="";
 
+    int max_data_index=0;
     int tmp_idx=0;
     std::array<double, 3> tmp_vec3 = std::array<double, 3>{0,0,0};
 
@@ -794,8 +801,13 @@ namespace parse
 
                 int idx = col + row*n_cols;
 
-                data[idx] = value;
-                ++f._state->current_column;
+                if( idx < f._state->max_data_index )
+                {
+                    data[idx] = value;
+                    ++f._state->current_column;
+                }
+                else
+                    throw max_index_error();
             }
         };
 
@@ -830,8 +842,13 @@ namespace parse
 
                 int idx = col + row*n_cols;
 
-                data[idx] = value;
-                ++f._state->current_column;
+                if( idx < f._state->max_data_index )
+                {
+                    data[idx] = value;
+                    ++f._state->current_column;
+                }
+                else
+                    throw max_index_error();
             }
         };
 
@@ -864,10 +881,16 @@ namespace parse
 
                 int n_cols = segment.valuedim;
 
-                int idx = col + row*n_cols;
+                int idx = f._state->bin_data_idx;
+                ++f._state->bin_data_idx;
 
-                data[idx] = value;
-                ++f._state->current_column;
+                if( idx < f._state->max_data_index )
+                {
+                    data[idx] = value;
+                    ++f._state->current_column;
+                }
+                else
+                    throw max_index_error();
             }
         };
 

@@ -40,6 +40,7 @@ Reading from a file:
 - `ovf_read_segment_header(myfile, index, segment)` to read the header into the segment struct
 - create float data array of appropriate size...
 - `ovf_read_segment_data_4(myfile, index, segment, data)` to read the segment data into your float array
+- setting `segment->N` before reading allows partial reading of large data segments
 
 Writing and appending to a file:
 

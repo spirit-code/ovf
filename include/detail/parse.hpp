@@ -232,9 +232,11 @@ namespace parse
 
         if( file.version == 2 )
         {
+            file._state->max_data_index = segment.N*segment.valuedim;
             success = pegtl::parse< v2::segment_data, v2::ovf_segment_data_action >( in, file, segment, data );
             file._state->current_line = 0;
             file._state->current_column = 0;
+            file._state->bin_data_idx = 0;
         }
         else if( file.version == 1 )
         {
@@ -261,6 +263,10 @@ namespace parse
             file._state->message_latest = "libovf segment_data: no success in parsing";
             return OVF_INVALID;
         }
+    }
+    catch( max_index_error )
+    {
+        return OVF_OK;
     }
     catch( pegtl::parse_error err )
     {
