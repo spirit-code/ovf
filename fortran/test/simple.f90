@@ -30,12 +30,11 @@ use ovf
         STOP 1
     endif
 
-
     ! Write a file
     call file%open_file("testfile_f.ovf")
+    segment%ValueDim = 3
     segment%N_Cells = [ 2, 2, 1 ]
     segment%N = product(segment%N_Cells)
-    segment%ValueDim = 3
 
     allocate( array_4(3, segment%N) )
     array_4 = 0
@@ -55,6 +54,7 @@ use ovf
     ! Append to a file
     array_4(:,:) = 3*array_4(:,:)
 
+    segment%Title = "fortran append test"
     success = file%append_segment(segment, array_4, OVF_FORMAT_TEXT)
     if ( success == OVF_OK) then
         write (*,*) "test append_segment succeeded."

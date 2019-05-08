@@ -11,11 +11,11 @@ ERROR   = -2
 INVALID = -3
 
 ### File formats
-FILEFORMAT_BIN  = -53
-FILEFORMAT_BIN4 = -54
-FILEFORMAT_BIN8 = -55
-FILEFORMAT_TEXT = -56
-FILEFORMAT_CSV  = -57
+FILEFORMAT_BIN  = 0
+FILEFORMAT_BIN4 = 1
+FILEFORMAT_BIN8 = 2
+FILEFORMAT_TEXT = 3
+FILEFORMAT_CSV  = 4
 
 class ovf_segment(ctypes.Structure):
     ### Some properties

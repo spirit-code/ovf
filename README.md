@@ -22,7 +22,7 @@ which should tell you what the problem was
 (`const char * ovf_latest_message(struct ovf_file *)` in the C API).
 
 In C/C++ and Fortran, before writing a segment, make sure the `ovf_segment` you pass in is
-initialized, i.e. you already called either `ovf_read_segment_header` or `ovf_segment_initialize`.
+initialized, i.e. you already called either `ovf_read_segment_header` or `ovf_segment_create`.
 
 ### C/C++
 
@@ -36,14 +36,14 @@ Opening and closing:
 
 Reading from a file:
 
-- `struct ovf_segment *segment = ovf_segment_initialize()` to initialize a segment and get the pointer
+- `struct ovf_segment *segment = ovf_segment_create()` to initialize a new segment and get the pointer
 - `ovf_read_segment_header(myfile, index, segment)` to read the header into the segment struct
 - create float data array of appropriate size...
 - `ovf_read_segment_data_4(myfile, index, segment, data)` to read the segment data into your float array
 
 Writing and appending to a file:
 
-- `struct ovf_segment *segment = ovf_segment_initialize()` to initialize a segment and get the pointer
+- `struct ovf_segment *segment = ovf_segment_create()` to initialize a new segment and get the pointer
 - `segment->n_cells[0] = ...` etc to set data dimensions, title and description, etc.
 - `ovf_write_segment_4(myfile, segment, data, OVF_FORMAT_TEXT)` to write a file containing the segment header and data
 - `ovf_append_segment_4(myfile, segment, data, OVF_FORMAT_TEXT)` to append the segment header and data to the file

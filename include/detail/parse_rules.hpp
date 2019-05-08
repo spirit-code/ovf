@@ -492,7 +492,6 @@ namespace parse
             template< typename Input >
             static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
             {
-                // std::cerr << "      keyword: " << in.string() << std::endl;
                 f._state->keyword = in.string();
                 std::transform(f._state->keyword.begin(), f._state->keyword.end(),f._state->keyword.begin(), ::tolower);
             }
@@ -504,9 +503,7 @@ namespace parse
             template< typename Input >
             static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
             {
-                // std::cerr << "      value: " << in.string() << std::endl;
                 f._state->value = in.string();
-                std::transform(f._state->value.begin(), f._state->value.end(),f._state->value.begin(), ::tolower);
             }
         };
 
@@ -575,108 +572,101 @@ namespace parse
                 }
                 else if( f._state->keyword == "meshtype" )
                 {
+                    std::string meshtype = f._state->value;
+                    std::transform(meshtype.begin(), meshtype.end(), meshtype.begin(), ::tolower);
                     if( std::string(segment.meshtype) == "" )
                     {
-                        if( f._state->value != "rectangular" && f._state->value != "irregular" )
+                        if( meshtype != "rectangular" && meshtype != "irregular" )
                             throw tao::pegtl::parse_error( fmt::format(
-                                "Invalid meshtype: \"{}\"", f._state->value), in );
-                        segment.meshtype = strdup(f._state->value.c_str());
+                                "Invalid meshtype: \"{}\"", meshtype), in );
+                        segment.meshtype = strdup(meshtype.c_str());
                     }
-                    else if( segment.meshtype != f._state->value )
+                    else if( std::string(segment.meshtype) != meshtype )
                     {
                         throw tao::pegtl::parse_error( fmt::format(
                             "meshtype \"{}\" was specified, but due to other parameters specified before, \"{}\" was expected!",
-                            f._state->value, segment.meshtype), in );
+                            meshtype, segment.meshtype), in );
                     }
                     f._state->found_meshtype = true;
                 }
                 else if( f._state->keyword == "xbase" )
                 {
-                    if( std::string(segment.meshtype) == "" )
-                        segment.meshtype = strdup("rectangular");
-                    else if( std::string(segment.meshtype) != "rectangular" )
+                    if( std::string(segment.meshtype) != "rectangular" )
                         throw tao::pegtl::parse_error( fmt::format(
                             "xbase is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.meshtype = strdup("rectangular");
                     segment.origin[0] = std::stof(f._state->value.c_str());
                     f._state->found_xbase = true;
                 }
                 else if( f._state->keyword == "ybase" )
                 {
-                    if( std::string(segment.meshtype) == "" )
-                        segment.meshtype = strdup("rectangular");
-                    else if( std::string(segment.meshtype) != "rectangular" )
+                    if( std::string(segment.meshtype) != "rectangular" )
                         throw tao::pegtl::parse_error( fmt::format(
                             "ybase is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.meshtype = strdup("rectangular");
                     segment.origin[1] = std::stof(f._state->value.c_str());
                     f._state->found_ybase = true;
                 }
                 else if( f._state->keyword == "zbase" )
                 {
-                    if( std::string(segment.meshtype) == "" )
-                        segment.meshtype = strdup("rectangular");
-                    else if( std::string(segment.meshtype) != "rectangular" )
+                    if( std::string(segment.meshtype) != "rectangular" )
                         throw tao::pegtl::parse_error( fmt::format(
                             "zbase is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.meshtype = strdup("rectangular");
                     segment.origin[2] = std::stof(f._state->value.c_str());
                     f._state->found_zbase = true;
                 }
                 else if( f._state->keyword == "xstepsize" )
                 {
-                    if( std::string(segment.meshtype) == "" )
-                        segment.meshtype = strdup("rectangular");
-                    else if( std::string(segment.meshtype) != "rectangular" )
+                    if( std::string(segment.meshtype) != "rectangular" )
                         throw tao::pegtl::parse_error( fmt::format(
                             "xstepsize is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.meshtype = strdup("rectangular");
                     segment.step_size[0] = std::stof(f._state->value.c_str());
                     f._state->found_xstepsize = true;
                 }
                 else if( f._state->keyword == "ystepsize" )
                 {
-                    if( std::string(segment.meshtype) == "" )
-                        segment.meshtype = strdup("rectangular");
-                    else if( std::string(segment.meshtype) != "rectangular" )
+                    if( std::string(segment.meshtype) != "rectangular" )
                         throw tao::pegtl::parse_error( fmt::format(
                             "ystepsize is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.meshtype = strdup("rectangular");
                     segment.step_size[1] = std::stof(f._state->value.c_str());
                     f._state->found_ystepsize = true;
                 }
                 else if( f._state->keyword == "zstepsize" )
                 {
-                    if( std::string(segment.meshtype) == "" )
-                        segment.meshtype = strdup("rectangular");
-                    else if( std::string(segment.meshtype) != "rectangular" )
+                    if( std::string(segment.meshtype) != "rectangular" )
                         throw tao::pegtl::parse_error( fmt::format(
                             "zstepsize is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.meshtype = strdup("rectangular");
                     segment.step_size[2] = std::stof(f._state->value.c_str());
                     f._state->found_zstepsize = true;
                 }
                 else if( f._state->keyword == "xnodes" )
                 {
-                    if( std::string(segment.meshtype) == "" )
-                        segment.meshtype = strdup("rectangular");
-                    else if( std::string(segment.meshtype) != "rectangular" )
+                    if( std::string(segment.meshtype) != "rectangular" )
                         throw tao::pegtl::parse_error( fmt::format(
                             "xnodes is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.meshtype = strdup("rectangular");
                     segment.n_cells[0] = std::stoi(f._state->value.c_str());
                     f._state->found_xnodes = true;
                 }
                 else if( f._state->keyword == "ynodes" )
                 {
-                    if( std::string(segment.meshtype) == "" )
-                        segment.meshtype = strdup("rectangular");
-                    else if( std::string(segment.meshtype) != "rectangular" )
+                    if( std::string(segment.meshtype) != "rectangular" )
                         throw tao::pegtl::parse_error( fmt::format(
                             "ynodes is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.meshtype = strdup("rectangular");
                     segment.n_cells[1] = std::stoi(f._state->value.c_str());
                     f._state->found_ynodes = true;
                 }
                 else if( f._state->keyword == "znodes" )
                 {
-                    if( std::string(segment.meshtype) == "" )
-                        segment.meshtype = strdup("rectangular");
-                    else if( std::string(segment.meshtype) != "rectangular" )
+                    if( std::string(segment.meshtype) != "rectangular" )
                         throw tao::pegtl::parse_error( fmt::format(
                             "znodes is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.meshtype = strdup("rectangular");
                     segment.n_cells[2] = std::stoi(f._state->value.c_str());
                     f._state->found_znodes = true;
                 }
@@ -685,6 +675,7 @@ namespace parse
                     if( segment.meshtype != "" && std::string(segment.meshtype) != "irregular" )
                         throw tao::pegtl::parse_error( fmt::format(
                             "pointcount is only for irregular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.meshtype = strdup("irregular");
                     segment.pointcount = std::stoi(f._state->value.c_str());
                     f._state->found_pointcount = true;
                 }

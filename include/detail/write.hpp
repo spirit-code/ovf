@@ -173,7 +173,8 @@ namespace write
 
 
     template <typename T>
-    void append_data_txt_to_string( std::string & output_to_file, const T * vf, int n_cols, int n_rows, const std::string& delimiter = "" )
+    void append_data_txt_to_string( std::string & output_to_file, const T * vf, int n_cols, int n_rows,
+        const std::string& delimiter = "" )
     try
     {
         for (int row = 0; row < n_rows; ++row)
@@ -239,7 +240,7 @@ namespace write
         else
             output_to_file += fmt::format( "# valuelabels: {}\n", segment->valuelabels );
 
-        // TODO: this ovf library does not support mesh units yet
+        // spatial unit
         output_to_file += fmt::format( empty_line );
         output_to_file += fmt::format( "## Fundamental mesh measurement unit. Treated as a label:\n" );
         if( std::string(segment->meshunit) == "" )
@@ -247,6 +248,7 @@ namespace write
         else
             output_to_file += fmt::format( "# meshunit: {}\n", segment->meshunit );
 
+        // extent
         output_to_file += fmt::format( empty_line );
         output_to_file += fmt::format( "# xmin: {}\n", segment->bounds_min[0] );
         output_to_file += fmt::format( "# ymin: {}\n", segment->bounds_min[1] );
@@ -256,7 +258,7 @@ namespace write
         output_to_file += fmt::format( "# zmax: {}\n", segment->bounds_max[2] );
         output_to_file += fmt::format( empty_line );
 
-        // TODO: this ovf library does not support irregular geometry yet. Write ONLY rectangular mesh
+        // Type of mesh and further keywords depending on it
         std::string meshtype = segment->meshtype;
         if( meshtype == "" )
             meshtype = "rectangular";
@@ -290,7 +292,8 @@ namespace write
         else
         {
             file->_state->message_latest = fmt::format(
-                "write_segment not writing out any data to file \"{}\", because meshtype is invalid: \"{}\". You may want to check the segment you passed in.",
+                "write_segment not writing out any data to file \"{}\", because meshtype is invalid: \"{}\". "
+                "You may want to check the segment you passed in.",
                 file->file_name, segment->meshtype);
             return OVF_ERROR;
         }
@@ -301,7 +304,8 @@ namespace write
         if( n_cols*n_rows <= 0 )
         {
             file->_state->message_latest = fmt::format(
-                "write_segment not writing out any data, because n_cols*n_rows={}*{}<=0 for file \"{}\". You may want to check the segment you passed in.",
+                "write_segment not writing out any data, because n_cols*n_rows={}*{}<=0 for file \"{}\". "
+                "You may want to check the segment you passed in.",
                 n_cols, n_rows, file->file_name);
             return OVF_ERROR;
         }
@@ -334,8 +338,13 @@ namespace write
             append_data_txt_to_string( output_to_file, vf, n_cols, n_rows );
         else if ( format == OVF_FORMAT_CSV )
             append_data_txt_to_string( output_to_file, vf, n_cols, n_rows, "," );
-        // else
-        //     // TODO...
+        else
+        {
+            file->_state->message_latest = fmt::format(
+                "write_segment not writing out any data, because format \"{}\" is invalid. "
+                "You may want to check what you passed in.", format);
+            return OVF_ERROR;
+        }
         output_to_file += fmt::format( "# End: Data {}\n", datatype_out );
         output_to_file += fmt::format( "# End: Segment\n" );
 
