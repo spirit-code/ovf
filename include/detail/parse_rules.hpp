@@ -10,11 +10,6 @@
 
 #include <array>
 
-struct max_index_error : public std::runtime_error
-{
-    max_index_error() : std::runtime_error("") {};
-};
-
 struct parser_state
 {
     // For the segment strings
@@ -23,7 +18,6 @@ struct parser_state
     // for reading data blocks
     int current_column = 0;
     int current_line = 0;
-    int bin_data_idx = 0;
 
     std::string keyword="", value="";
 
@@ -273,37 +267,34 @@ namespace parse
         {};
 
 
-        struct data_float
+        struct text_value_float
             : pegtl::seq<
                 opt_plus_minus,
                 decimal_number >
         {};
 
-        struct segment_data_float
-            : data_float
-        {};
         struct line_data_txt
-            : pegtl::plus< pegtl::pad< segment_data_float, pegtl::blank > >
+            : pegtl::plus< pegtl::pad< text_value_float, pegtl::blank > >
         {};
         struct line_data_csv
             : pegtl::seq<
-                pegtl::list< pegtl::pad<segment_data_float, pegtl::blank>, pegtl::one<','> >,
+                pegtl::list< pegtl::pad<text_value_float, pegtl::blank>, pegtl::one<','> >,
                 pegtl::opt< pegtl::pad< pegtl::one<','>, pegtl::blank > >
                 >
         {};
 
-        struct bin_4_check_value
+        struct check_value_bin_4
             : tao::pegtl::uint32_le::any
         {};
-        struct bin_4_value
-            : tao::pegtl::uint32_le::any
+        struct bytes_bin_4
+            : pegtl::seq< pegtl::star< pegtl::not_at< pegtl::seq<end, TAO_PEGTL_ISTRING("Data Binary 4"), pegtl::eol> >, pegtl::any > >
         {};
 
-        struct bin_8_check_value
+        struct check_value_bin_8
             : tao::pegtl::uint64_le::any
         {};
-        struct bin_8_value
-            : tao::pegtl::uint64_le::any
+        struct bytes_bin_8
+            : pegtl::seq< pegtl::star< pegtl::not_at< pegtl::seq<end, TAO_PEGTL_ISTRING("Data Binary 8"), pegtl::eol> >, pegtl::any > >
         {};
 
         //////////////////////////////////////////////
@@ -362,11 +353,6 @@ namespace parse
             : pegtl::seq<
                 pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
                 pegtl::seq< begin, TAO_PEGTL_ISTRING("Segment"), pegtl::eol>,
-                // pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
-                // header,
-                // pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
-                // pegtl::sor<data_text, data_csv, data_binary_8, data_binary_4>,
-                // pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
                 pegtl::until<pegtl::seq<end, TAO_PEGTL_ISTRING("Segment")>>, pegtl::eol >
         {};
 
@@ -396,8 +382,6 @@ namespace parse
                 pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
                 header,
                 pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
-                // pegtl::sor<data_text, data_csv, data_binary_8, data_binary_4>,
-                // pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
                 pegtl::until<pegtl::seq<end, TAO_PEGTL_ISTRING("Segment")>>, pegtl::eol >
         {};
 
@@ -719,16 +703,18 @@ namespace parse
         struct data_binary_4
             : pegtl::seq<
                 begin, TAO_PEGTL_ISTRING("Data Binary 4"), pegtl::eol,
-                bin_4_check_value,
-                pegtl::until< pegtl::seq<end, TAO_PEGTL_ISTRING("Data Binary 4"), pegtl::eol>, bin_4_value >
+                check_value_bin_4,
+                bytes_bin_4,
+                pegtl::seq<end, TAO_PEGTL_ISTRING("Data Binary 4"), pegtl::eol>
                 >
         {};
 
         struct data_binary_8
             : pegtl::seq<
                 begin, TAO_PEGTL_ISTRING("Data Binary 8"), pegtl::eol,
-                bin_8_check_value,
-                pegtl::until< pegtl::seq<end, TAO_PEGTL_ISTRING("Data Binary 8"), pegtl::eol>, bin_8_value >
+                check_value_bin_8,
+                bytes_bin_8,
+                pegtl::seq<end, TAO_PEGTL_ISTRING("Data Binary 8"), pegtl::eol>
                 >
         {};
 
@@ -785,7 +771,7 @@ namespace parse
         };
 
         template<>
-        struct ovf_segment_data_action< segment_data_float >
+        struct ovf_segment_data_action< text_value_float >
         {
             template< typename Input, typename scalar >
             static void apply( const Input& in, ovf_file & f, const ovf_segment & segment, scalar * data )
@@ -804,13 +790,11 @@ namespace parse
                     data[idx] = value;
                     ++f._state->current_column;
                 }
-                else
-                    throw max_index_error();
             }
         };
 
         template<>
-        struct ovf_segment_data_action< bin_4_check_value >
+        struct ovf_segment_data_action< check_value_bin_4 >
         {
             template< typename Input, typename scalar >
             static void apply( const Input& in, ovf_file & f, const ovf_segment & segment, scalar * data )
@@ -818,40 +802,43 @@ namespace parse
                 std::string bytes = in.string();
                 uint32_t hex_4b = endian::from_little_32(reinterpret_cast<const uint8_t *>( bytes.c_str() ));
 
-                if ( hex_4b != check::val_4b )
+                if( hex_4b != check::val_4b )
                     throw tao::pegtl::parse_error( "the expected binary check value could not be parsed!", in );
             }
         };
 
         template<>
-        struct ovf_segment_data_action< bin_4_value >
+        struct ovf_segment_data_action< bytes_bin_4 >
         {
             template< typename Input, typename scalar >
             static void apply( const Input& in, ovf_file & f, const ovf_segment & segment, scalar * data )
             {
-                std::string bytes = in.string();
-                uint32_t ivalue = endian::from_little_32(reinterpret_cast<const uint8_t *>( bytes.c_str() ));
-                float value = *reinterpret_cast<const float *>( &ivalue );
-
-                int row = f._state->current_line;
-                int col = f._state->current_column;
-
-                int n_cols = segment.valuedim;
-
-                int idx = col + row*n_cols;
-
-                if( idx < f._state->max_data_index )
+                std::string bytes_str = in.string();
+                const uint8_t * bytes = reinterpret_cast<const uint8_t *>( bytes_str.c_str() );
+                for( int idx=0; idx < f._state->max_data_index; ++idx )
                 {
-                    data[idx] = value;
-                    ++f._state->current_column;
+                    uint32_t ivalue = endian::from_little_32( &bytes[4*idx] );
+                    float value = *reinterpret_cast<const float *>( &ivalue );
+
+                    if( idx < f._state->max_data_index )
+                    {
+                        data[idx] = value;
+                        ++f._state->current_column;
+                    }
+
+                    if( f._state->current_column > segment.valuedim )
+                    {
+                        f._state->current_column = 0;
+                        ++f._state->current_line;
+                    }
                 }
-                else
-                    throw max_index_error();
+                f._state->current_line = 0;
+                f._state->current_column = 0;
             }
         };
 
         template<>
-        struct ovf_segment_data_action< bin_8_check_value >
+        struct ovf_segment_data_action< check_value_bin_8 >
         {
             template< typename Input, typename scalar >
             static void apply( const Input& in, ovf_file & f, const ovf_segment & segment, scalar * data )
@@ -859,36 +846,38 @@ namespace parse
                 std::string bytes = in.string();
                 uint64_t hex_8b = endian::from_little_64(reinterpret_cast<const uint8_t *>( bytes.c_str() ));
 
-                if ( hex_8b != check::val_8b )
+                if( hex_8b != check::val_8b )
                     throw tao::pegtl::parse_error( "the expected binary check value could not be parsed!", in );
             }
         };
 
         template<>
-        struct ovf_segment_data_action< bin_8_value >
+        struct ovf_segment_data_action< bytes_bin_8 >
         {
             template< typename Input, typename scalar >
             static void apply( const Input& in, ovf_file & f, const ovf_segment & segment, scalar * data )
             {
-                std::string bytes = in.string();
-                uint64_t ivalue = endian::from_little_64(reinterpret_cast<const uint8_t *>( bytes.c_str() ));
-                double value = *reinterpret_cast<const double *>( &ivalue );
-
-                int row = f._state->current_line;
-                int col = f._state->current_column;
-
-                int n_cols = segment.valuedim;
-
-                int idx = f._state->bin_data_idx;
-                ++f._state->bin_data_idx;
-
-                if( idx < f._state->max_data_index )
+                std::string bytes_str = in.string();
+                const uint8_t * bytes = reinterpret_cast<const uint8_t *>( bytes_str.c_str() );
+                for( int idx=0; idx < f._state->max_data_index; ++idx )
                 {
-                    data[idx] = value;
-                    ++f._state->current_column;
+                    uint64_t ivalue = endian::from_little_64( &bytes[8*idx] );
+                    double value = *reinterpret_cast<const double *>( &ivalue );
+
+                    if( idx < f._state->max_data_index )
+                    {
+                        data[idx] = value;
+                        ++f._state->current_column;
+                    }
+
+                    if( f._state->current_column > segment.valuedim )
+                    {
+                        f._state->current_column = 0;
+                        ++f._state->current_line;
+                    }
                 }
-                else
-                    throw max_index_error();
+                f._state->current_line = 0;
+                f._state->current_column = 0;
             }
         };
 
