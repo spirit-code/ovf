@@ -121,6 +121,7 @@ if __name__ == "__main__":
         name             = NAME,
         description      = find_meta("description"),
         long_description = read(README),
+        long_description_content_type = "text/markdown",
         license          = find_meta("license"),
         url              = find_meta("uri"),
         version          = find_meta("version")+version_suffix,
