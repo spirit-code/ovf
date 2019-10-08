@@ -9,6 +9,9 @@ OVF Parser Library
 
 **[Python package](https://pypi.org/project/ovf/):** [![PyPI version](https://badge.fury.io/py/ovf.svg)](https://badge.fury.io/py/ovf)
 
+| Library Coverage | Python Bindings Coverage |
+| :--------------: | :----------------------: |
+| [![Library Coverage Status](https://codecov.io/gh/spirit-code/ovf/branch/master/graph/badge.svg)](https://codecov.io/gh/spirit-code/ovf/branch/master) | [![Python Bindings Coverage Status](https://coveralls.io/repos/github/spirit-code/ovf/badge.svg?branch=master)](https://coveralls.io/github/spirit-code/ovf?branch=master)|
 
 How to use
 ---------------------------------

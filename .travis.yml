@@ -21,11 +21,11 @@ matrix:
     # OSX, xcode 8
     - os: osx
       osx_image: xcode10
-      env: CMAKE_OPTIONS="-DOVF_BUILD_FORTRAN_BINDINGS=OFF" PYPI=true
+      env: CMAKE_OPTIONS="-DOVF_BUILD_PYTHON_BINDINGS=ON -DOVF_BUILD_FORTRAN_BINDINGS=OFF -DOVF_BUILD_TEST=ON -DOVF_TEST_COVERAGE=OFF" PYPI=true COVERAGE=false RUNTESTS=true
     # Linux, GCC 7
     - os: linux
       dist: bionic
-      env: COMPILER_C=gcc COMPILER_CXX=g++ COMPILER_FORTRAN=gfortran CMAKE_OPTIONS="" PYPI=true
+      env: COMPILER_C=gcc COMPILER_CXX=g++ COMPILER_FORTRAN=gfortran CMAKE_OPTIONS="-DOVF_BUILD_PYTHON_BINDINGS=ON -DOVF_BUILD_FORTRAN_BINDINGS=ON -DOVF_BUILD_TEST=ON -DOVF_TEST_COVERAGE=OFF" PYPI=true COVERAGE=false RUNTESTS=true
       compiler: g++
       addons:
         apt:
@@ -34,13 +34,28 @@ matrix:
     # Linux, GCC 5
     - os: linux
       dist: xenial
-      env: COMPILER_C=gcc-5 COMPILER_CXX=g++-5 CMAKE_OPTIONS="-DOVF_BUILD_FORTRAN_BINDINGS=OFF" PYPI=false
+      env: COMPILER_C=gcc-5 COMPILER_CXX=g++-5 CMAKE_OPTIONS="-DOVF_BUILD_PYTHON_BINDINGS=ON -DOVF_BUILD_FORTRAN_BINDINGS=OFF -DOVF_BUILD_TEST=ON -DOVF_TEST_COVERAGE=OFF" PYPI=false COVERAGE=false RUNTESTS=true
       compiler: g++
       addons:
         apt:
           packages:
           - g++-5
           - gfortran-5
+          - python2.7
+          sources:
+          - sourceline: 'ppa:ubuntu-toolchain-r/test'
+          - sourceline: 'ppa:jonathonf/python-2.7'
+    # Linux, GCC 7 coverage build
+    - os: linux
+      dist: bionic
+      env: COMPILER_C=gcc COMPILER_CXX=g++ CMAKE_OPTIONS="-DOVF_BUILD_PYTHON_BINDINGS=ON -DOVF_BUILD_FORTRAN_BINDINGS=OFF -DOVF_BUILD_TEST=ON -DOVF_TEST_COVERAGE=ON" PYPI=false COVERAGE=true RUNTESTS=false
+      compiler: g++
+      addons:
+        apt:
+          packages:
+          - gfortran
+          - lcov
+          - ca-certificates
           - python2.7
           sources:
           - sourceline: 'ppa:ubuntu-toolchain-r/test'
@@ -84,7 +99,7 @@ before_script:
   # Test everything
   - |
     cd build
-    ctest --output-on-failure
+    if [ "$RUNTESTS" != "false" ]; then ctest --output-on-failure; fi
   - cd ..
 
 
@@ -122,3 +137,23 @@ script:
   # Upload to testpypi on all commits (if PYPI == true)
   - if [ "$PYPI" == "true" ]; then echo "Deploying to testpypi."; else echo "Not deploying to testpypi."; fi
   - if [ "$PYPI" == "true" ]; then twine upload --skip-existing -r testpypi dist/*; fi
+
+  # Don't run coverage on branches other than master or develop (or pull requests targeting those)
+  - if [ "$TRAVIS_BRANCH" != "master" ] && [ "$TRAVIS_BRANCH" != "develop" ]; then COVERAGE=false; fi
+
+  # Run C++ coverage report generation and upload to codecov
+  - cd ../build
+  - if [ "$COVERAGE" == "true" ]; then lcov -c --initial --no-external --directory $(pwd) --base-directory $(cd ..; pwd) -o baseline.info; fi
+  - if [ "$COVERAGE" == "true" ]; then make test; fi
+  - if [ "$COVERAGE" == "true" ]; then lcov -c --no-external --directory $(pwd) --base-directory $(cd ..; pwd) -o after_test.info; fi
+  - if [ "$COVERAGE" == "true" ]; then lcov -a baseline.info -a after_test.info -o total_test.info; fi
+  - if [ "$COVERAGE" == "true" ]; then lcov -r total_test.info \*/thirdparty/\* \*/test/\* \*/fmt/\* -o coverage.info; fi
+  - if [ "$COVERAGE" == "true" ]; then bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"; fi
+
+  # Run Python coverage report generation and upload to coveralls
+  - cd ../python
+  - if [ "$COVERAGE" == "true" ]; then coverage run --source ovf --omit=ovf/ovflib.py setup.py test > cov.txt; fi
+  - if [ "$COVERAGE" == "true" ]; then head cov.txt; fi
+  - if [ "$COVERAGE" == "true" ]; then coverage report -m; fi
+  - if [ "$COVERAGE" == "true" ]; then coverage xml; fi
+  - if [ "$COVERAGE" == "true" ]; then coveralls; fi
