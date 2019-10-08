@@ -117,10 +117,21 @@ endif
 For more information on how to generate modern Fortran bindings,
 see also https://github.com/MRedies/Interfacing-Fortran
 
+
 How to embed it into your project
 ---------------------------------
 
-TODO...
+If you are using CMake, it is as simple as cloning this into a subdirectory,
+e.g. `thirdparty/ovf` and using it with `add_subdirectory`:
+
+```
+add_subdirectory( ${PROJECT_SOURCE_DIR}/thirdparty/ovf )
+set( OVF_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/thirdparty/ovf/include )
+target_include_directories( myproject PRIVATE ${OVF_INCLUDE_DIRS} )
+target_link_libraries( myproject PUBLIC ${OVF_LIBRARIES_STATIC} )
+```
+
+If you're not using CMake, you may need to put in some manual work.
 
 
 Build
