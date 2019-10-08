@@ -6,9 +6,9 @@ integer, parameter  :: OVF_OK      = -1
 integer, parameter  :: OVF_ERROR   = -2
 integer, parameter  :: OVF_INVALID = -3
 
-integer, parameter  :: OVF_FORMAT_BIN  = -55
-integer, parameter  :: OVF_FORMAT_TEXT = -56
-integer, parameter  :: OVF_FORMAT_CSV  = -57
+integer, parameter  :: OVF_FORMAT_BIN  = 0
+integer, parameter  :: OVF_FORMAT_TEXT = 3
+integer, parameter  :: OVF_FORMAT_CSV  = 4
 
 type, bind(c) :: c_ovf_file
     type(c_ptr)     :: filename
@@ -275,18 +275,18 @@ contains
         implicit none
         class(ovf_segment)              :: self
 
-        type(c_ovf_segment), pointer     :: c_segment
+        type(c_ovf_segment), pointer    :: c_segment
         type(c_ptr)                     :: c_segment_ptr
 
         interface
-            function ovf_segment_initialize() &
-                bind ( C, name = "ovf_segment_initialize" )
+            function ovf_segment_create() &
+                bind ( C, name = "ovf_segment_create" )
             use, intrinsic :: iso_c_binding
-                type(c_ptr) :: ovf_segment_initialize
-            end function ovf_segment_initialize
+                type(c_ptr) :: ovf_segment_create
+            end function ovf_segment_create
         end interface
 
-        c_segment_ptr = ovf_segment_initialize()
+        c_segment_ptr = ovf_segment_create()
         call c_f_pointer(c_segment_ptr, c_segment)
 
         call fill_ovf_segment(c_segment, self)

@@ -21,8 +21,8 @@ class TestState(unittest.TestCase):
             segment = ovf.ovf_segment(
                 title="python write test",
                 comment="more details in this comment...",
-                n_cells=[2,2,1],
-                valuedim=3)
+                valuedim=3,
+                n_cells=[2,2,1])
             success = ovf_file.write_segment(segment, data, fileformat=ovf.FILEFORMAT_BIN)
             if success != ovf.OK:
                 print("write_segment failed: ", ovf_file.get_latest_message())
@@ -76,8 +76,8 @@ class TestState(unittest.TestCase):
             segment = ovf.ovf_segment(
                 title="python write test",
                 comment="more details in this comment...",
-                n_cells=[2,2,1],
-                valuedim=3)
+                valuedim=3,
+                n_cells=[2,2,1])
             success = ovf_file.write_segment(segment, data, fileformat=ovf.FILEFORMAT_BIN)
             if success != ovf.OK:
                 print("write_segment failed: ", ovf_file.get_latest_message())

@@ -12,7 +12,7 @@ TEST_CASE( "Binary", "[binary]" )
     SECTION( "write" )
     {
         // segment header
-        auto segment = ovf_segment_initialize();
+        auto segment = ovf_segment_create();
         // segment->title = const_cast<char *>("ovf test title - write");
         // segment->comment = const_cast<char *>("test write");
         segment->valuedim = 3;
@@ -44,7 +44,7 @@ TEST_CASE( "Binary", "[binary]" )
     SECTION( "append" )
     {
         // segment header
-        auto segment = ovf_segment_initialize();
+        auto segment = ovf_segment_create();
         // segment->title = const_cast<char *>("ovf test title - append");
         // segment->comment = const_cast<char *>("test append");
         segment->valuedim = 3;
@@ -76,7 +76,7 @@ TEST_CASE( "Binary", "[binary]" )
     SECTION( "read first segment" )
     {
         // segment header
-        auto segment = ovf_segment_initialize();
+        auto segment = ovf_segment_create();
 
         // open
         auto file = ovf_open(testfile);
@@ -111,7 +111,7 @@ TEST_CASE( "Binary", "[binary]" )
     SECTION( "read second segment")
     {
         // segment header
-        auto segment = ovf_segment_initialize();
+        auto segment = ovf_segment_create();
 
         // open
         auto file = ovf_open(testfile);
@@ -151,7 +151,7 @@ TEST_CASE( "Mixed binary and CSV", "[mixed]" )
     SECTION( "write" )
     {
         // segment header
-        auto segment = ovf_segment_initialize();
+        auto segment = ovf_segment_create();
         segment->title = const_cast<char *>("ovf test title - write");
         segment->comment = const_cast<char *>("test write csv");
         segment->valuedim = 3;
@@ -186,7 +186,7 @@ TEST_CASE( "Mixed binary and CSV", "[mixed]" )
     SECTION( "append" )
     {
         // segment header
-        auto segment = ovf_segment_initialize();
+        auto segment = ovf_segment_create();
         // segment->title = const_cast<char *>("ovf test title - append");
         // segment->comment = const_cast<char *>("test append");
         segment->valuedim = 3;
@@ -218,7 +218,7 @@ TEST_CASE( "Mixed binary and CSV", "[mixed]" )
     SECTION( "append" )
     {
         // segment header
-        auto segment = ovf_segment_initialize();
+        auto segment = ovf_segment_create();
         // segment->title = const_cast<char *>("ovf test title - append");
         // segment->comment = const_cast<char *>("test append");
         segment->valuedim = 3;
@@ -250,7 +250,7 @@ TEST_CASE( "Mixed binary and CSV", "[mixed]" )
     SECTION( "read first segment" )
     {
         // segment header
-        auto segment = ovf_segment_initialize();
+        auto segment = ovf_segment_create();
 
         // open
         auto file = ovf_open(testfile);
@@ -287,7 +287,7 @@ TEST_CASE( "Mixed binary and CSV", "[mixed]" )
     SECTION( "read second segment")
     {
         // segment header
-        auto segment = ovf_segment_initialize();
+        auto segment = ovf_segment_create();
 
         // open
         auto file = ovf_open(testfile);

@@ -25,11 +25,11 @@
 #define OVF_INVALID     -3
 
 /* OVF data formats */
-#define OVF_FORMAT_BIN   -53
-#define OVF_FORMAT_BIN4  -54
-#define OVF_FORMAT_BIN8  -55
-#define OVF_FORMAT_TEXT  -56
-#define OVF_FORMAT_CSV   -57
+#define OVF_FORMAT_BIN   0
+#define OVF_FORMAT_BIN4  1
+#define OVF_FORMAT_BIN8  2
+#define OVF_FORMAT_TEXT  3
+#define OVF_FORMAT_CSV   4
 
 /* all header info on a segment */
 struct ovf_segment {
@@ -81,8 +81,14 @@ struct ovf_file {
 /* opening a file will fill the struct and prepare everything for read/write */
 DLLEXPORT struct ovf_file * ovf_open(const char *filename);
 
+/* opening a file will fill the struct and prepare everything for read/write */
+DLLEXPORT void ovf_file_initialize(struct ovf_file *, const char *filename);
+
 /* create a default-initialized segment struct */
-DLLEXPORT struct ovf_segment * ovf_segment_initialize();
+DLLEXPORT struct ovf_segment * ovf_segment_create();
+
+/* default-initialize the values of a segment struct */
+DLLEXPORT void ovf_segment_initialize(struct ovf_segment *);
 
 /* read the geometry info from a segment header */
 DLLEXPORT int ovf_read_segment_header(struct ovf_file *, int index, struct ovf_segment *);

@@ -52,6 +52,7 @@ struct parser_state
     */
     std::string message_out="", message_latest="";
 
+    int max_data_index=0;
     int tmp_idx=0;
     std::array<double, 3> tmp_vec3 = std::array<double, 3>{0,0,0};
 
@@ -266,37 +267,34 @@ namespace parse
         {};
 
 
-        struct data_float
+        struct text_value_float
             : pegtl::seq<
                 opt_plus_minus,
                 decimal_number >
         {};
 
-        struct segment_data_float
-            : data_float
-        {};
         struct line_data_txt
-            : pegtl::plus< pegtl::pad< segment_data_float, pegtl::blank > >
+            : pegtl::plus< pegtl::pad< text_value_float, pegtl::blank > >
         {};
         struct line_data_csv
             : pegtl::seq<
-                pegtl::list< pegtl::pad<segment_data_float, pegtl::blank>, pegtl::one<','> >,
+                pegtl::list< pegtl::pad<text_value_float, pegtl::blank>, pegtl::one<','> >,
                 pegtl::opt< pegtl::pad< pegtl::one<','>, pegtl::blank > >
                 >
         {};
 
-        struct bin_4_check_value
+        struct check_value_bin_4
             : tao::pegtl::uint32_le::any
         {};
-        struct bin_4_value
-            : tao::pegtl::uint32_le::any
+        struct bytes_bin_4
+            : pegtl::seq< pegtl::star< pegtl::not_at< pegtl::seq<end, TAO_PEGTL_ISTRING("Data Binary 4"), pegtl::eol> >, pegtl::any > >
         {};
 
-        struct bin_8_check_value
+        struct check_value_bin_8
             : tao::pegtl::uint64_le::any
         {};
-        struct bin_8_value
-            : tao::pegtl::uint64_le::any
+        struct bytes_bin_8
+            : pegtl::seq< pegtl::star< pegtl::not_at< pegtl::seq<end, TAO_PEGTL_ISTRING("Data Binary 8"), pegtl::eol> >, pegtl::any > >
         {};
 
         //////////////////////////////////////////////
@@ -355,11 +353,6 @@ namespace parse
             : pegtl::seq<
                 pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
                 pegtl::seq< begin, TAO_PEGTL_ISTRING("Segment"), pegtl::eol>,
-                // pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
-                // header,
-                // pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
-                // pegtl::sor<data_text, data_csv, data_binary_8, data_binary_4>,
-                // pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
                 pegtl::until<pegtl::seq<end, TAO_PEGTL_ISTRING("Segment")>>, pegtl::eol >
         {};
 
@@ -389,8 +382,6 @@ namespace parse
                 pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
                 header,
                 pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
-                // pegtl::sor<data_text, data_csv, data_binary_8, data_binary_4>,
-                // pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
                 pegtl::until<pegtl::seq<end, TAO_PEGTL_ISTRING("Segment")>>, pegtl::eol >
         {};
 
@@ -492,7 +483,6 @@ namespace parse
             template< typename Input >
             static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
             {
-                // std::cerr << "      keyword: " << in.string() << std::endl;
                 f._state->keyword = in.string();
                 std::transform(f._state->keyword.begin(), f._state->keyword.end(),f._state->keyword.begin(), ::tolower);
             }
@@ -504,9 +494,7 @@ namespace parse
             template< typename Input >
             static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
             {
-                // std::cerr << "      value: " << in.string() << std::endl;
                 f._state->value = in.string();
-                std::transform(f._state->value.begin(), f._state->value.end(),f._state->value.begin(), ::tolower);
             }
         };
 
@@ -575,116 +563,110 @@ namespace parse
                 }
                 else if( f._state->keyword == "meshtype" )
                 {
+                    std::string meshtype = f._state->value;
+                    std::transform(meshtype.begin(), meshtype.end(), meshtype.begin(), ::tolower);
                     if( std::string(segment.meshtype) == "" )
                     {
-                        if( f._state->value != "rectangular" && f._state->value != "irregular" )
+                        if( meshtype != "rectangular" && meshtype != "irregular" )
                             throw tao::pegtl::parse_error( fmt::format(
-                                "Invalid meshtype: \"{}\"", f._state->value), in );
-                        segment.meshtype = strdup(f._state->value.c_str());
+                                "Invalid meshtype: \"{}\"", meshtype), in );
+                        segment.meshtype = strdup(meshtype.c_str());
                     }
-                    else if( segment.meshtype != f._state->value )
+                    else if( std::string(segment.meshtype) != meshtype )
                     {
                         throw tao::pegtl::parse_error( fmt::format(
                             "meshtype \"{}\" was specified, but due to other parameters specified before, \"{}\" was expected!",
-                            f._state->value, segment.meshtype), in );
+                            meshtype, segment.meshtype), in );
                     }
                     f._state->found_meshtype = true;
                 }
                 else if( f._state->keyword == "xbase" )
                 {
-                    if( std::string(segment.meshtype) == "" )
-                        segment.meshtype = strdup("rectangular");
-                    else if( std::string(segment.meshtype) != "rectangular" )
+                    if( std::string(segment.meshtype) != "rectangular" )
                         throw tao::pegtl::parse_error( fmt::format(
                             "xbase is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.meshtype = strdup("rectangular");
                     segment.origin[0] = std::stof(f._state->value.c_str());
                     f._state->found_xbase = true;
                 }
                 else if( f._state->keyword == "ybase" )
                 {
-                    if( std::string(segment.meshtype) == "" )
-                        segment.meshtype = strdup("rectangular");
-                    else if( std::string(segment.meshtype) != "rectangular" )
+                    if( std::string(segment.meshtype) != "rectangular" )
                         throw tao::pegtl::parse_error( fmt::format(
                             "ybase is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.meshtype = strdup("rectangular");
                     segment.origin[1] = std::stof(f._state->value.c_str());
                     f._state->found_ybase = true;
                 }
                 else if( f._state->keyword == "zbase" )
                 {
-                    if( std::string(segment.meshtype) == "" )
-                        segment.meshtype = strdup("rectangular");
-                    else if( std::string(segment.meshtype) != "rectangular" )
+                    if( std::string(segment.meshtype) != "rectangular" )
                         throw tao::pegtl::parse_error( fmt::format(
                             "zbase is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.meshtype = strdup("rectangular");
                     segment.origin[2] = std::stof(f._state->value.c_str());
                     f._state->found_zbase = true;
                 }
                 else if( f._state->keyword == "xstepsize" )
                 {
-                    if( std::string(segment.meshtype) == "" )
-                        segment.meshtype = strdup("rectangular");
-                    else if( std::string(segment.meshtype) != "rectangular" )
+                    if( std::string(segment.meshtype) != "rectangular" )
                         throw tao::pegtl::parse_error( fmt::format(
                             "xstepsize is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.meshtype = strdup("rectangular");
                     segment.step_size[0] = std::stof(f._state->value.c_str());
                     f._state->found_xstepsize = true;
                 }
                 else if( f._state->keyword == "ystepsize" )
                 {
-                    if( std::string(segment.meshtype) == "" )
-                        segment.meshtype = strdup("rectangular");
-                    else if( std::string(segment.meshtype) != "rectangular" )
+                    if( std::string(segment.meshtype) != "rectangular" )
                         throw tao::pegtl::parse_error( fmt::format(
                             "ystepsize is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.meshtype = strdup("rectangular");
                     segment.step_size[1] = std::stof(f._state->value.c_str());
                     f._state->found_ystepsize = true;
                 }
                 else if( f._state->keyword == "zstepsize" )
                 {
-                    if( std::string(segment.meshtype) == "" )
-                        segment.meshtype = strdup("rectangular");
-                    else if( std::string(segment.meshtype) != "rectangular" )
+                    if( std::string(segment.meshtype) != "rectangular" )
                         throw tao::pegtl::parse_error( fmt::format(
                             "zstepsize is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.meshtype = strdup("rectangular");
                     segment.step_size[2] = std::stof(f._state->value.c_str());
                     f._state->found_zstepsize = true;
                 }
                 else if( f._state->keyword == "xnodes" )
                 {
-                    if( std::string(segment.meshtype) == "" )
-                        segment.meshtype = strdup("rectangular");
-                    else if( std::string(segment.meshtype) != "rectangular" )
+                    if( std::string(segment.meshtype) != "rectangular" )
                         throw tao::pegtl::parse_error( fmt::format(
                             "xnodes is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.meshtype = strdup("rectangular");
                     segment.n_cells[0] = std::stoi(f._state->value.c_str());
                     f._state->found_xnodes = true;
                 }
                 else if( f._state->keyword == "ynodes" )
                 {
-                    if( std::string(segment.meshtype) == "" )
-                        segment.meshtype = strdup("rectangular");
-                    else if( std::string(segment.meshtype) != "rectangular" )
+                    if( std::string(segment.meshtype) != "rectangular" )
                         throw tao::pegtl::parse_error( fmt::format(
                             "ynodes is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.meshtype = strdup("rectangular");
                     segment.n_cells[1] = std::stoi(f._state->value.c_str());
                     f._state->found_ynodes = true;
                 }
                 else if( f._state->keyword == "znodes" )
                 {
-                    if( std::string(segment.meshtype) == "" )
-                        segment.meshtype = strdup("rectangular");
-                    else if( std::string(segment.meshtype) != "rectangular" )
+                    if( std::string(segment.meshtype) != "rectangular" )
                         throw tao::pegtl::parse_error( fmt::format(
                             "znodes is only for rectangular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.meshtype = strdup("rectangular");
                     segment.n_cells[2] = std::stoi(f._state->value.c_str());
                     f._state->found_znodes = true;
                 }
                 else if( f._state->keyword == "pointcount" )
                 {
-                    if( segment.meshtype != "" && std::string(segment.meshtype) != "irregular" )
+                    if( std::string(segment.meshtype) != "" && std::string(segment.meshtype) != "irregular" )
                         throw tao::pegtl::parse_error( fmt::format(
                             "pointcount is only for irregular meshes! Mesh type is \"{}\"", segment.meshtype), in );
+                    segment.meshtype = strdup("irregular");
                     segment.pointcount = std::stoi(f._state->value.c_str());
                     f._state->found_pointcount = true;
                 }
@@ -721,18 +703,18 @@ namespace parse
         struct data_binary_4
             : pegtl::seq<
                 begin, TAO_PEGTL_ISTRING("Data Binary 4"), pegtl::eol,
-                bin_4_check_value,
-                pegtl::until< pegtl::eol, bin_4_value >,
-                end, TAO_PEGTL_ISTRING("Data Binary 4"), pegtl::eol
+                check_value_bin_4,
+                bytes_bin_4,
+                pegtl::seq<end, TAO_PEGTL_ISTRING("Data Binary 4"), pegtl::eol>
                 >
         {};
 
         struct data_binary_8
             : pegtl::seq<
                 begin, TAO_PEGTL_ISTRING("Data Binary 8"), pegtl::eol,
-                bin_8_check_value,
-                pegtl::until< pegtl::eol, bin_8_value >,
-                end, TAO_PEGTL_ISTRING("Data Binary 8"), pegtl::eol
+                check_value_bin_8,
+                bytes_bin_8,
+                pegtl::seq<end, TAO_PEGTL_ISTRING("Data Binary 8"), pegtl::eol>
                 >
         {};
 
@@ -789,7 +771,7 @@ namespace parse
         };
 
         template<>
-        struct ovf_segment_data_action< segment_data_float >
+        struct ovf_segment_data_action< text_value_float >
         {
             template< typename Input, typename scalar >
             static void apply( const Input& in, ovf_file & f, const ovf_segment & segment, scalar * data )
@@ -803,13 +785,16 @@ namespace parse
 
                 int idx = col + row*n_cols;
 
-                data[idx] = value;
-                ++f._state->current_column;
+                if( idx < f._state->max_data_index )
+                {
+                    data[idx] = value;
+                    ++f._state->current_column;
+                }
             }
         };
 
         template<>
-        struct ovf_segment_data_action< bin_4_check_value >
+        struct ovf_segment_data_action< check_value_bin_4 >
         {
             template< typename Input, typename scalar >
             static void apply( const Input& in, ovf_file & f, const ovf_segment & segment, scalar * data )
@@ -817,35 +802,43 @@ namespace parse
                 std::string bytes = in.string();
                 uint32_t hex_4b = endian::from_little_32(reinterpret_cast<const uint8_t *>( bytes.c_str() ));
 
-                if ( hex_4b != check::val_4b )
+                if( hex_4b != check::val_4b )
                     throw tao::pegtl::parse_error( "the expected binary check value could not be parsed!", in );
             }
         };
 
         template<>
-        struct ovf_segment_data_action< bin_4_value >
+        struct ovf_segment_data_action< bytes_bin_4 >
         {
             template< typename Input, typename scalar >
             static void apply( const Input& in, ovf_file & f, const ovf_segment & segment, scalar * data )
             {
-                std::string bytes = in.string();
-                uint32_t ivalue = endian::from_little_32(reinterpret_cast<const uint8_t *>( bytes.c_str() ));
-                float value = *reinterpret_cast<const float *>( &ivalue );
+                std::string bytes_str = in.string();
+                const uint8_t * bytes = reinterpret_cast<const uint8_t *>( bytes_str.c_str() );
+                for( int idx=0; idx < f._state->max_data_index; ++idx )
+                {
+                    uint32_t ivalue = endian::from_little_32( &bytes[4*idx] );
+                    float value = *reinterpret_cast<const float *>( &ivalue );
 
-                int row = f._state->current_line;
-                int col = f._state->current_column;
+                    if( idx < f._state->max_data_index )
+                    {
+                        data[idx] = value;
+                        ++f._state->current_column;
+                    }
 
-                int n_cols = segment.valuedim;
-
-                int idx = col + row*n_cols;
-
-                data[idx] = value;
-                ++f._state->current_column;
+                    if( f._state->current_column > segment.valuedim )
+                    {
+                        f._state->current_column = 0;
+                        ++f._state->current_line;
+                    }
+                }
+                f._state->current_line = 0;
+                f._state->current_column = 0;
             }
         };
 
         template<>
-        struct ovf_segment_data_action< bin_8_check_value >
+        struct ovf_segment_data_action< check_value_bin_8 >
         {
             template< typename Input, typename scalar >
             static void apply( const Input& in, ovf_file & f, const ovf_segment & segment, scalar * data )
@@ -853,30 +846,38 @@ namespace parse
                 std::string bytes = in.string();
                 uint64_t hex_8b = endian::from_little_64(reinterpret_cast<const uint8_t *>( bytes.c_str() ));
 
-                if ( hex_8b != check::val_8b )
+                if( hex_8b != check::val_8b )
                     throw tao::pegtl::parse_error( "the expected binary check value could not be parsed!", in );
             }
         };
 
         template<>
-        struct ovf_segment_data_action< bin_8_value >
+        struct ovf_segment_data_action< bytes_bin_8 >
         {
             template< typename Input, typename scalar >
             static void apply( const Input& in, ovf_file & f, const ovf_segment & segment, scalar * data )
             {
-                std::string bytes = in.string();
-                uint64_t ivalue = endian::from_little_64(reinterpret_cast<const uint8_t *>( bytes.c_str() ));
-                double value = *reinterpret_cast<const double *>( &ivalue );
+                std::string bytes_str = in.string();
+                const uint8_t * bytes = reinterpret_cast<const uint8_t *>( bytes_str.c_str() );
+                for( int idx=0; idx < f._state->max_data_index; ++idx )
+                {
+                    uint64_t ivalue = endian::from_little_64( &bytes[8*idx] );
+                    double value = *reinterpret_cast<const double *>( &ivalue );
 
-                int row = f._state->current_line;
-                int col = f._state->current_column;
+                    if( idx < f._state->max_data_index )
+                    {
+                        data[idx] = value;
+                        ++f._state->current_column;
+                    }
 
-                int n_cols = segment.valuedim;
-
-                int idx = col + row*n_cols;
-
-                data[idx] = value;
-                ++f._state->current_column;
+                    if( f._state->current_column > segment.valuedim )
+                    {
+                        f._state->current_column = 0;
+                        ++f._state->current_line;
+                    }
+                }
+                f._state->current_line = 0;
+                f._state->current_column = 0;
             }
         };
 

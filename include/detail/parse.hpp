@@ -197,7 +197,7 @@ namespace parse
     {
         pegtl::memory_input<> in( file._state->file_contents[index], "" );
         const auto p = err.positions.front();
-        std::string line = in.line_as_string(p);
+        std::string line = in.line_at(p);
         file._state->message_latest = fmt::format(
             "libovf segment_header: Expected an empty line or a line containing a keyword and a value!"
             "Found the following line instead:\n\"{}\"", line);
@@ -232,6 +232,7 @@ namespace parse
 
         if( file.version == 2 )
         {
+            file._state->max_data_index = segment.N*segment.valuedim;
             success = pegtl::parse< v2::segment_data, v2::ovf_segment_data_action >( in, file, segment, data );
             file._state->current_line = 0;
             file._state->current_column = 0;
@@ -276,8 +277,17 @@ namespace parse
     }
     catch( ... )
     {
-        file._state->message_latest = "libovf segment_data: unknown exception";
-        return OVF_ERROR;
+        // Make sure it really never crashes
+        try
+        {
+            file._state->message_latest = "libovf segment_data: unknown exception";
+            return OVF_ERROR;
+        }
+        catch( ... )
+        {
+            std::cerr << "libovf segment_data: unrecoverable error" << '\n';
+            return OVF_ERROR;
+        }
     }
 }
 }

@@ -23,7 +23,7 @@ TEST_CASE( "Write", "[write]" )
     SECTION( "write" )
     {
         // segment header
-        auto segment = ovf_segment_initialize();
+        auto segment = ovf_segment_create();
         segment->title = const_cast<char *>("ovf test title - write");
         segment->comment = const_cast<char *>("test write");
         segment->valuedim = 3;
@@ -55,7 +55,7 @@ TEST_CASE( "Write", "[write]" )
     SECTION( "append" )
     {
         // segment header
-        auto segment = ovf_segment_initialize();
+        auto segment = ovf_segment_create();
         segment->title = const_cast<char *>("ovf test title - append");
         segment->comment = const_cast<char *>("test append");
         segment->valuedim = 3;
@@ -87,7 +87,7 @@ TEST_CASE( "Write", "[write]" )
     SECTION( "append irregular" )
     {
         // segment header
-        auto segment = ovf_segment_initialize();
+        auto segment = ovf_segment_create();
         segment->title = const_cast<char *>("ovf test title - append irregular mesh");
         segment->comment = const_cast<char *>("an irregular mesh has different keywords than a rectangular one");
         segment->valuedim = 3;
@@ -129,7 +129,7 @@ TEST_CASE( "Read", "[read]" )
         int index = 0;
 
         // segment header
-        auto segment = ovf_segment_initialize();
+        auto segment = ovf_segment_create();
 
         // read header
         int success = ovf_read_segment_header(file, index, segment);
@@ -165,7 +165,7 @@ TEST_CASE( "Read", "[read]" )
         int index = 1;
 
         // segment header
-        auto segment = ovf_segment_initialize();
+        auto segment = ovf_segment_create();
 
         // read header
         int success = ovf_read_segment_header(file, index, segment);
@@ -201,7 +201,7 @@ TEST_CASE( "Read", "[read]" )
         int index = 2;
 
         // segment header
-        auto segment = ovf_segment_initialize();
+        auto segment = ovf_segment_create();
 
         // read header
         int success = ovf_read_segment_header(file, index, segment);

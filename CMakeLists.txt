@@ -8,7 +8,7 @@ set( META_AUTHOR_MAINTAINER    "Gideon Mueller" )
 set( META_AUTHOR_EMAIL         "g.mueller@fz-juelich.de" )
 set( META_VERSION_MAJOR        "0" )
 set( META_VERSION_MINOR        "4" )
-set( META_VERSION_PATCH        "1" )
+set( META_VERSION_PATCH        "2" )
 set( META_VERSION              "${META_VERSION_MAJOR}.${META_VERSION_MINOR}.${META_VERSION_PATCH}" )
 #############################################
 
@@ -211,4 +211,5 @@ if( OVF_BUILD_TEST AND OVF_BUILD_FORTRAN_BINDINGS )
 endif()
 
 
-set(OVF_LIBRARIES ${PROJECT_NAME} PARENT_SCOPE)
+set( OVF_LIBRARIES ${PROJECT_NAME}        PARENT_SCOPE )
+set( OVF_LIBRARIES ${PROJECT_NAME}_static PARENT_SCOPE )

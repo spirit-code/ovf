@@ -4,17 +4,17 @@
 #include <detail/write.hpp>
 #include <fmt/format.h>
 
-struct ovf_file* ovf_open(const char *filename)
+
+void ovf_file_initialize(struct ovf_file * ovf_file_ptr, const char * filename)
 try
 {
     // Initialize the struct
-    struct ovf_file * ovf_file_ptr = new ovf_file{
-        /*file_name*/   strdup(filename),
-        /*version*/     0,
-        /*found*/       false,
-        /*is_ovf*/      false,
-        /*n_segments*/  0,
-        /*handle*/      new parser_state };
+    ovf_file_ptr->file_name  = strdup(filename);
+    ovf_file_ptr->version    = 0,
+    ovf_file_ptr->found      = false;
+    ovf_file_ptr->is_ovf     = false;
+    ovf_file_ptr->n_segments = 0;
+    ovf_file_ptr->_state     = new parser_state;
 
     // Check if the file exists
     std::fstream filestream( filename );
@@ -24,7 +24,18 @@ try
     // Parse the overall header and do the initial parse of segments
     if( ovf_file_ptr->found )
         ovf::detail::parse::initial(*ovf_file_ptr);
+}
+catch( ... )
+{
+}
 
+
+struct ovf_file * ovf_open(const char * filename)
+try
+{
+    // Initialize the struct
+    struct ovf_file * ovf_file_ptr = new ovf_file;
+    ovf_file_initialize(ovf_file_ptr, filename);
     return ovf_file_ptr;
 }
 catch( ... )
@@ -33,28 +44,45 @@ catch( ... )
 }
 
 
-struct ovf_segment * ovf_segment_initialize()
+void ovf_segment_initialize(struct ovf_segment * ovf_segment_ptr)
 try
 {
-    struct ovf_segment * ovf_segment_ptr = new ovf_segment
-    {
-        const_cast<char *>(""),   // title
-        const_cast<char *>(""),   // comment
-        0,                        // valuedim
-        const_cast<char *>(""),   // valueunits
-        const_cast<char *>(""),   // valuelabels
-        const_cast<char *>(""),   // meshtype
-        const_cast<char *>(""),   // meshunit
-        0,                        // pointcount
-        {0,0,0},                  // n_cells
-        0,                        // N
-        {0,0,0},                  // step_size
-        {0,0,0},                  // bounds_min
-        {0,0,0},                  // bounds_max
-        0,                        // lattice_constant
-        {0,0,0}                   // origin
-    };
+    ovf_segment_ptr->title              = const_cast<char *>("");
+    ovf_segment_ptr->comment            = const_cast<char *>("");
+    ovf_segment_ptr->valuedim           = 0;
+    ovf_segment_ptr->valueunits         = const_cast<char *>("");
+    ovf_segment_ptr->valuelabels        = const_cast<char *>("");
+    ovf_segment_ptr->meshtype           = const_cast<char *>("");
+    ovf_segment_ptr->meshunit           = const_cast<char *>("");
+    ovf_segment_ptr->pointcount         = 0;
+    ovf_segment_ptr->n_cells[0]         = 0;
+    ovf_segment_ptr->n_cells[1]         = 0;
+    ovf_segment_ptr->n_cells[2]         = 0;
+    ovf_segment_ptr->N                  = 0;
+    ovf_segment_ptr->step_size[0]       = 0;
+    ovf_segment_ptr->step_size[1]       = 0;
+    ovf_segment_ptr->step_size[2]       = 0;
+    ovf_segment_ptr->bounds_min[0]      = 0;
+    ovf_segment_ptr->bounds_min[1]      = 0;
+    ovf_segment_ptr->bounds_min[2]      = 0;
+    ovf_segment_ptr->bounds_max[0]      = 0;
+    ovf_segment_ptr->bounds_max[1]      = 0;
+    ovf_segment_ptr->bounds_max[2]      = 0;
+    ovf_segment_ptr->lattice_constant   = 0;
+    ovf_segment_ptr->origin[0]          = 0;
+    ovf_segment_ptr->origin[1]          = 0;
+    ovf_segment_ptr->origin[2]          = 0;
+}
+catch( ... )
+{
+}
 
+
+struct ovf_segment * ovf_segment_create()
+try
+{
+    struct ovf_segment * ovf_segment_ptr = new ovf_segment;
+    ovf_segment_initialize(ovf_segment_ptr);
     return ovf_segment_ptr;
 }
 catch( ... )
@@ -75,15 +103,13 @@ try
     if( !segment->title )
         return false;
 
-    if( !segment->origin )
-        return false;
-
     return true;
 }
 catch( ... )
 {
     return false;
 }
+
 
 int ovf_read_segment_header(struct ovf_file * ovf_file_ptr, int index, struct ovf_segment *segment)
 try
@@ -304,7 +330,7 @@ try
         return OVF_ERROR;
     }
 
-    int retcode = ovf::detail::write::segment(ovf_file_ptr, segment, data, true, false, format);
+    int retcode = ovf::detail::write::segment(ovf_file_ptr, segment, data, false, format);
     if (retcode != OVF_OK)
         ovf_file_ptr->_state->message_latest += "\novf_write_segment_4 failed.";
     return retcode;
@@ -355,7 +381,7 @@ try
         return OVF_ERROR;
     }
 
-    int retcode = ovf::detail::write::segment(ovf_file_ptr, segment, data, true, false, format);
+    int retcode = ovf::detail::write::segment(ovf_file_ptr, segment, data, false, format);
     if (retcode != OVF_OK)
         ovf_file_ptr->_state->message_latest += "\novf_write_segment_8 failed.";
     return retcode;
@@ -393,7 +419,7 @@ try
         return OVF_ERROR;
     }
 
-    if( !ovf_file_ptr->is_ovf )
+    if( ovf_file_ptr->found && !ovf_file_ptr->is_ovf )
     {
         ovf_file_ptr->_state->message_latest = "libovf ovf_append_segment_4: file is not ovf...";
         return OVF_ERROR;
@@ -412,8 +438,8 @@ try
         return OVF_ERROR;
     }
 
-    bool write_header = !ovf_file_ptr->found;
-    int retcode = ovf::detail::write::segment(ovf_file_ptr, segment, data, write_header, true, format);
+    bool append = ovf_file_ptr->found;
+    int retcode = ovf::detail::write::segment(ovf_file_ptr, segment, data, append, format);
     if (retcode != OVF_OK)
         ovf_file_ptr->_state->message_latest += "\novf_append_segment_4 failed.";
     return retcode;
@@ -455,7 +481,7 @@ try
         format == OVF_FORMAT_BIN4 )
         format = OVF_FORMAT_BIN;
 
-    if( !ovf_file_ptr->is_ovf )
+    if( ovf_file_ptr->found && !ovf_file_ptr->is_ovf )
     {
         ovf_file_ptr->_state->message_latest = "libovf ovf_append_segment_8: file is not ovf...";
         return OVF_ERROR;
@@ -470,8 +496,8 @@ try
         return OVF_ERROR;
     }
 
-    bool write_header = !ovf_file_ptr->found;
-    int retcode = ovf::detail::write::segment(ovf_file_ptr, segment, data, write_header, true, format);
+    bool append = ovf_file_ptr->found;
+    int retcode = ovf::detail::write::segment(ovf_file_ptr, segment, data, append, format);
     if (retcode != OVF_OK)
         ovf_file_ptr->_state->message_latest += "\novf_append_segment_8 failed.";
     return retcode;
@@ -498,7 +524,7 @@ catch( ... )
 }
 
 
-int ovf_close(struct ovf_file *ovf_file_ptr)
+int ovf_close(struct ovf_file * ovf_file_ptr)
 try
 {
     if( !ovf_file_ptr )
@@ -506,7 +532,6 @@ try
     if( !ovf_file_ptr->_state )
         return OVF_ERROR;
     delete(ovf_file_ptr->_state);
-    delete(ovf_file_ptr);
     return OVF_OK;
 }
 catch( ... )
