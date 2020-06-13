@@ -20,32 +20,32 @@ environment:
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       configuration: Release
       PYTHON: "C:\\Python36-x64"
-      CMAKE_OPTIONS: "-DOVF_BUILD_FORTRAN_BINDINGS=OFF"
+      CMAKE_OPTIONS: "-DOVF_BUILD_FORTRAN_BINDINGS=OFF -DOVF_BUILD_PYTHON_BINDINGS=ON"
       EXCLUDETESTS:
       PYPI: true
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       configuration: Debug
       PYTHON: "C:\\Python36-x64"
-      CMAKE_OPTIONS: "-DOVF_BUILD_FORTRAN_BINDINGS=OFF"
+      CMAKE_OPTIONS: "-DOVF_BUILD_FORTRAN_BINDINGS=OFF -DOVF_BUILD_PYTHON_BINDINGS=ON"
       EXCLUDETESTS:
       PYPI:
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
       configuration: Release
       PYTHON: "C:\\Python36-x64"
-      CMAKE_OPTIONS: "-DOVF_BUILD_FORTRAN_BINDINGS=OFF"
+      CMAKE_OPTIONS: "-DOVF_BUILD_FORTRAN_BINDINGS=OFF -DOVF_BUILD_PYTHON_BINDINGS=ON"
       EXCLUDETESTS:
       PYPI:
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
       configuration: Debug
       PYTHON: "C:\\Python36-x64"
-      CMAKE_OPTIONS: "-DOVF_BUILD_FORTRAN_BINDINGS=OFF"
+      CMAKE_OPTIONS: "-DOVF_BUILD_FORTRAN_BINDINGS=OFF -DOVF_BUILD_PYTHON_BINDINGS=ON"
       EXCLUDETESTS:
       PYPI:
     # Build and test with pinning and defects
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       configuration: Release
       PYTHON: "C:\\Python36-x64"
-      CMAKE_OPTIONS: "-DOVF_BUILD_FORTRAN_BINDINGS=OFF"
+      CMAKE_OPTIONS: "-DOVF_BUILD_FORTRAN_BINDINGS=OFF -DOVF_BUILD_PYTHON_BINDINGS=ON"
       EXCLUDETESTS:
       PYPI:
 
@@ -87,7 +87,7 @@ after_test:
   - echo Going to build python package and wheel
   - ps: if ("$Env:APPVEYOR_REPO_BRANCH" -eq "master") {$env:OVF_ADD_VERSION_SUFFIX="false"} else {$env:OVF_ADD_VERSION_SUFFIX="true"}
   - ps: echo "Add suffix to version tag for python package $env:OVF_ADD_VERSION_SUFFIX"
-  
+
   - cd python
   - "%PYTHON%/python setup.py sdist bdist_wheel"
 
