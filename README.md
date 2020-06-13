@@ -4,7 +4,7 @@ OVF Parser Library
 
 [OVF format specification](#specification)
 
-[![Build Status](https://travis-ci.org/spirit-code/ovf.svg?branch=master)](https://travis-ci.org/spirit-code/ovf)
+[![Build Status](https://api.travis-ci.com/spirit-code/ovf.svg?branch=master)](https://travis-ci.com/github/spirit-code/ovf)
 [![Build status](https://ci.appveyor.com/api/projects/status/ur0cq1tykfndlj06/branch/master?svg=true)](https://ci.appveyor.com/project/GPMueller/ovf)
 
 **[Python package](https://pypi.org/project/ovf/):** [![PyPI version](https://badge.fury.io/py/ovf.svg)](https://badge.fury.io/py/ovf)
@@ -393,7 +393,7 @@ An example OVF 2.0 file for an irregular mesh with N = 2:
 Comparison to OVF 1.0
 ---------------------------------
 
-- The first line reads `# OOMMF OVF 2.0` for both regular and irregular meshes. 
+- The first line reads `# OOMMF OVF 2.0` for both regular and irregular meshes.
 - In the segment header block
     - the keywords `valuemultiplier`, `boundary`, `ValueRangeMaxMag` and `ValueRangeMinMag` of the OVF 1.0 format are not supported.
     - the new keyword `valuedim` is required. This must specify an integer value, `N`, bigger or equal to one.
