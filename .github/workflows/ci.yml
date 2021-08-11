@@ -17,10 +17,16 @@ jobs:
         include:
           - build-type: Debug
     env:
+      CMAKE_FLAGS: -DOVF_BUILD_PYTHON_BINDINGS=ON -DOVF_BUILD_TEST=ON
       BUILD_TYPE: ${{ matrix.build-type }}
 
     steps:
     - uses: actions/checkout@v2
+
+    - name: Install necessary packages
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install numpy
 
     - name: 📁 Create build folder
       run: cmake -E make_directory ${{runner.workspace}}/build
@@ -39,3 +45,60 @@ jobs:
       shell: bash
       working-directory: ${{runner.workspace}}/build
       run: ctest -C $BUILD_TYPE -E $EXCLUDETESTS --output-on-failure
+
+  test-coverage:
+    runs-on: ubuntu-latest
+    env:
+      BUILD_TYPE: Release
+      CMAKE_FLAGS: -DOVF_BUILD_PYTHON_BINDINGS=ON -DOVF_BUILD_TEST=ON -DOVF_TEST_COVERAGE=ON
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Create build folder
+      run: cmake -E make_directory ${{runner.workspace}}/build
+
+    - name: configure
+      shell: bash
+      working-directory: ${{runner.workspace}}/build
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_FLAGS
+
+    - name: build
+      shell: bash
+      working-directory: ${{runner.workspace}}/build
+      run: cmake --build . --config Release -j 2
+
+    - name: Install necessary packages
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install coverage numpy 'coveralls<3' wheel
+        sudo apt update
+        sudo apt install lcov
+
+    - name: generate C++ coverage
+      shell: bash
+      working-directory: ${{runner.workspace}}/build
+      run: |
+        lcov -c -i --no-external --directory . --base-directory $GITHUB_WORKSPACE -o baseline.info
+        make test
+        lcov -c --no-external --directory . --base-directory $GITHUB_WORKSPACE -o after_test.info
+        lcov -a baseline.info -a after_test.info -o total_test.info
+        lcov -r total_test.info \*thirdparty\* \*/test/\* \*Collection\* \*DLL_\* -o coverage.info
+    - name: upload C++ coverage
+      uses: codecov/codecov-action@v1
+      with:
+        files: ${{runner.workspace}}/build/coverage.info
+
+    - name: Python API coverage
+      working-directory: ./python
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        coverage run --omit=ovf/ovflib.py setup.py test > cov.txt
+        head cov.txt
+        coverage report -m
+        coverage xml
+        coveralls

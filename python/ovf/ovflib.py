@@ -23,6 +23,8 @@ def LoadOVFLibrary():
 
     libname = GetOVFLibName()
 
+    import os
+
     ### Load the OVF library
     _ovf = ctypes.CDLL(ovf_py_dir + '/' + libname)
 
