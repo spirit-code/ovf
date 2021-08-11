@@ -43,7 +43,7 @@ def read(*parts):
     resulting file.  Assume UTF-8 encoding.
     """
     with codecs.open(os.path.join(HERE, *parts), "rb", "utf-8") as f:
-        return f.read()
+        return f.read().replace('\r\n', '\n')
 
 
 META_FILE = read(META_PATH)

@@ -161,10 +161,10 @@ jobs:
       if: github.ref != 'refs/heads/master'
       run: twine upload --skip-existing --repository testpypi dist/*
 
-    # - name: Deploy to PyPI
-    #   working-directory: ./python
-    #   env:
-    #     TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-    #     TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-    #   if: github.ref == 'refs/heads/master'
-    #   run: twine upload --skip-existing dist/*
+    - name: Deploy to PyPI
+      working-directory: ./python
+      env:
+        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      if: github.ref == 'refs/heads/master'
+      run: twine upload --skip-existing dist/*
