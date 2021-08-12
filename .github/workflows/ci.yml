@@ -12,7 +12,6 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         build-type: [Release, Debug]
-        openmp: [false]
         name-suffix: [""]
         include:
           - build-type: Debug
@@ -34,7 +33,12 @@ jobs:
     - name: ⚙ Configure
       shell: bash
       working-directory: ${{runner.workspace}}/build
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_FLAGS
+      run: |
+        if [ "${{ matrix.os }}" == "ubuntu-latest" ]
+        then
+          export CMAKE_FLAGS="$CMAKE_FLAGS -DOVF_BUILD_FORTRAN_BINDINGS=ON"
+        fi
+        cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_FLAGS
 
     - name: 🛠 Build
       shell: bash
@@ -44,7 +48,7 @@ jobs:
     - name: 🧪 Test
       shell: bash
       working-directory: ${{runner.workspace}}/build
-      run: ctest -C $BUILD_TYPE -E $EXCLUDETESTS --output-on-failure
+      run: ctest -C $BUILD_TYPE -E $EXCLUDETESTS --output-on-failure --verbose
 
   test-coverage:
     runs-on: ubuntu-latest
@@ -58,15 +62,15 @@ jobs:
       with:
         python-version: '3.x'
 
-    - name: Create build folder
+    - name: 📁 Create build folder
       run: cmake -E make_directory ${{runner.workspace}}/build
 
-    - name: configure
+    - name: ⚙ Configure
       shell: bash
       working-directory: ${{runner.workspace}}/build
       run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_FLAGS
 
-    - name: build
+    - name: 🛠 Build
       shell: bash
       working-directory: ${{runner.workspace}}/build
       run: cmake --build . --config Release -j 2
@@ -78,7 +82,7 @@ jobs:
         sudo apt update
         sudo apt install lcov
 
-    - name: generate C++ coverage
+    - name: Generate C++ coverage
       shell: bash
       working-directory: ${{runner.workspace}}/build
       run: |
@@ -87,7 +91,8 @@ jobs:
         lcov -c --no-external --directory . --base-directory $GITHUB_WORKSPACE -o after_test.info
         lcov -a baseline.info -a after_test.info -o total_test.info
         lcov -r total_test.info \*thirdparty\* \*/test/\* \*Collection\* \*DLL_\* -o coverage.info
-    - name: upload C++ coverage
+
+    - name: Upload C++ coverage
       uses: codecov/codecov-action@v1
       with:
         files: ${{runner.workspace}}/build/coverage.info
@@ -130,12 +135,12 @@ jobs:
     - name: Create build folder
       run: cmake -E make_directory ${{runner.workspace}}/build
 
-    - name: configure
+    - name: ⚙ Configure
       shell: bash
       working-directory: ${{runner.workspace}}/build
       run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_FLAGS
 
-    - name: build
+    - name: 🛠 Build
       shell: bash
       working-directory: ${{runner.workspace}}/build
       run: cmake --build . --config $BUILD_TYPE -j 2
@@ -145,7 +150,7 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install numpy setuptools wheel twine
 
-    - name: build Python package
+    - name: Build python package
       shell: bash
       working-directory: ./python
       run: |
@@ -153,7 +158,7 @@ jobs:
         echo "Add suffix to ovf version tag for python package $OVF_ADD_VERSION_SUFFIX"
         python setup.py sdist bdist_wheel
 
-    - name: Deploy to TestPyPI
+    - name: 🚀 Deploy to TestPyPI
       working-directory: ./python
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
@@ -161,7 +166,7 @@ jobs:
       if: github.ref != 'refs/heads/master'
       run: twine upload --skip-existing --repository testpypi dist/*
 
-    - name: Deploy to PyPI
+    - name:  🚀 Deploy to PyPI
       working-directory: ./python
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
