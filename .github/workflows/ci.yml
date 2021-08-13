@@ -102,7 +102,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        coverage run --omit=ovf/ovflib.py setup.py test > cov.txt
+        coverage run --source ovf --omit=ovf/ovflib.py setup.py test > cov.txt
         head cov.txt
         coverage report -m
         coverage xml
