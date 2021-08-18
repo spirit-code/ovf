@@ -273,10 +273,10 @@ namespace keywords
     struct cur_basis_line_value_z : pegtl::pad<decimal_number, pegtl::blank>
     { };
 
-    struct basis_value_line : pegtl::seq< pegtl::string<'#'>, cur_basis_line_value_x, cur_basis_line_value_y, cur_basis_line_value_z, pegtl::eol >
+    struct basis_value_line : pegtl::seq< pegtl::string<'#'>, cur_basis_line_value_x, cur_basis_line_value_y, cur_basis_line_value_z>
     { };
 
-    struct basis_value : pegtl::seq< pegtl::eol, pegtl::plus< basis_value_line > >
+    struct basis_value : pegtl::seq< pegtl::eol, pegtl::list<basis_value_line, pegtl::eol > > 
     { };
 
     template<>
