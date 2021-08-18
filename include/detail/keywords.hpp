@@ -115,7 +115,7 @@ namespace keywords
     struct meshtype : TAO_PEGTL_ISTRING("meshtype")
     { };
 
-    struct meshtype_value : pegtl::sor< TAO_PEGTL_ISTRING("rectangular"), TAO_PEGTL_ISTRING("irregular"), TAO_PEGTL_ISTRING("lattice")> // Only 'rectangular', 'irregular' or 'lattice' allowed
+    struct meshtype_value : pegtl::sor< TAO_PEGTL_ISTRING("rectangular"), TAO_PEGTL_ISTRING("irregular")> // Only 'rectangular' and 'irregular' allowed
     { };
 
     template<>

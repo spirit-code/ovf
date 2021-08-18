@@ -78,7 +78,7 @@ namespace write
 
         if(ovf_extension_format == OVF_EXTENSION_FORMAT_AOVF_COMP)
         {
-            ret += "##% AOVF 1.0\n";
+            ret += "##% AOVF_COMP 1.0\n";
         }
         if(ovf_extension_format == OVF_EXTENSION_FORMAT_AOVF)
         {
@@ -305,6 +305,27 @@ namespace write
             if(file->ovf_extension_format == OVF_EXTENSION_FORMAT_AOVF_COMP)
             {
                 prefix = "##%";
+
+                // In compatibility mode we have to add the required fields for the rectangular mesh
+                // Latice origin in space
+                output_to_file += fmt::format( "# xbase: {}\n", segment->origin[0] );
+                output_to_file += fmt::format( "# ybase: {}\n", segment->origin[1] );
+                output_to_file += fmt::format( "# zbase: {}\n", segment->origin[2] );
+
+                // Mesh spacing
+                output_to_file += fmt::format( "# xstepsize: {}\n", segment->step_size[0] );
+                output_to_file += fmt::format( "# ystepsize: {}\n", segment->step_size[1] );
+                output_to_file += fmt::format( "# zstepsize: {}\n", segment->step_size[2] );
+
+                // Number of nodes along each direction
+                output_to_file += fmt::format( "# xnodes: {}\n", segment->n_cells[0] * segment->ncellpoints ); // We fold the basis atoms into xnodes
+                output_to_file += fmt::format( "# ynodes: {}\n", segment->n_cells[1] );
+                output_to_file += fmt::format( "# znodes: {}\n", segment->n_cells[2] );
+
+                // We also add the lattice meshtype as a magic comment
+                output_to_file += fmt::format( "#\n" );
+                output_to_file += fmt::format( "##% meshtype: {}\n", "lattice" );
+
             } if(file->ovf_extension_format == OVF_EXTENSION_FORMAT_OVF)
             {
                  file->_state->message_latest = fmt::format(
@@ -327,23 +348,6 @@ namespace write
                 output_to_file += fmt::format( "{} {:22.12f} {:22.12f} {:22.12f}\n", prefix, segment->basis[3*i], segment->basis[3*i+1], segment->basis[3*i+2] );
             }
 
-            if(file->ovf_extension_format == OVF_EXTENSION_FORMAT_AOVF_COMP) // In compatibility mode we have to add the required fields for the rectangular mesh
-            {
-                // Latice origin in space
-                output_to_file += fmt::format( "# xbase: {}\n", segment->origin[0] );
-                output_to_file += fmt::format( "# ybase: {}\n", segment->origin[1] );
-                output_to_file += fmt::format( "# zbase: {}\n", segment->origin[2] );
-
-                // Mesh spacing
-                output_to_file += fmt::format( "# xstepsize: {}\n", segment->step_size[0] );
-                output_to_file += fmt::format( "# ystepsize: {}\n", segment->step_size[1] );
-                output_to_file += fmt::format( "# zstepsize: {}\n", segment->step_size[2] );
-
-                // Number of nodes along each direction
-                output_to_file += fmt::format( "# xnodes: {}\n", segment->n_cells[0] * segment->ncellpoints ); // We fold the basis atoms into xnodes
-                output_to_file += fmt::format( "# ynodes: {}\n", segment->n_cells[1] );
-                output_to_file += fmt::format( "# znodes: {}\n", segment->n_cells[2] );
-            }
             n_rows = segment->n_cells[0] * segment->n_cells[1] * segment->n_cells[2] * segment->ncellpoints;
         }
         else

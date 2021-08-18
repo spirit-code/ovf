@@ -27,7 +27,7 @@ namespace parse
         : pegtl::string< '#' >
     {};
 
-    // "#"
+    // "%"
     struct magic_char
         : pegtl::string< '%' >
     {};
@@ -48,7 +48,7 @@ namespace parse
     {};
 
     struct version_string
-        : pegtl::sor< TAO_PEGTL_ISTRING("OOMMF OVF"), TAO_PEGTL_ISTRING("AOVF") >
+        : pegtl::sor< TAO_PEGTL_ISTRING("OOMMF OVF"), TAO_PEGTL_ISTRING("AOVF_COMP"), TAO_PEGTL_ISTRING("AOVF") >
     {};
 
     // " OOMMF OVF "
@@ -104,6 +104,18 @@ namespace parse
         static void apply( const Input& in, ovf_file & file )
         {
             file.version_string = strdup(in.string().c_str());
+            if(in.string() == "AOVF_COMP")
+            {
+                file.ovf_extension_format = OVF_EXTENSION_FORMAT_AOVF_COMP;
+            } else if(in.string() == "AOVF")
+            {
+                file.ovf_extension_format = OVF_EXTENSION_FORMAT_AOVF;
+            } else if(in.string() == "OOMMF OVF")
+            {
+                file.ovf_extension_format = OVF_EXTENSION_FORMAT_OVF;
+            } else {
+                throw pegtl::parse_error(fmt::format("Detected invalid version string {}", in.string()), in);
+            }
         }
     };
 
@@ -133,7 +145,7 @@ namespace parse
                 pegtl::string<'#'>,
                 pegtl::until<
                     pegtl::at<
-                        pegtl::sor<pegtl::eol, pegtl::string<'#','#'>>
+                        pegtl::sor<pegtl::eol, pegtl::seq<pegtl::string<'#','#'>, pegtl::not_at<magic_char>>>
                     >,
                     pegtl::blank
                 >
@@ -144,6 +156,7 @@ namespace parse
         struct comment
             : pegtl::seq<
                 pegtl::string< '#', '#' >,
+                pegtl::not_at<magic_char>,
                 pegtl::until<
                     pegtl::at<pegtl::eol>,
                     pegtl::any
@@ -246,7 +259,7 @@ namespace parse
 
         // This is how a line ends: either eol or the begin of a comment
         struct line_end
-            : pegtl::sor<pegtl::eol, pegtl::string<'#','#'>>
+            : pegtl::sor<pegtl::eol, pegtl::seq<pegtl::string<'#','#'>,pegtl::not_at<magic_char>>>
         {};
 
         // This checks that the line end is met and moves up until eol
@@ -267,7 +280,18 @@ namespace parse
                 finish_line >
         {};
 
-        struct keyword_value_line
+        template<typename kw, typename val>
+        struct magic_keyword_value_pair
+            : pegtl::seq<
+                magic_prefix,
+                pegtl::pad< kw, pegtl::blank >,
+                TAO_PEGTL_ISTRING(":"),
+                pegtl::pad< val, pegtl::blank >,
+                pegtl::until<pegtl::at<line_end>>,
+                finish_line >
+        {};
+
+        struct ovf_keyword_value_line
             : pegtl::sor< 
                 keyword_value_pair< keywords::title, keywords::title_value >,
                 keyword_value_pair< keywords::desc, keywords::desc_value >,
@@ -291,8 +315,15 @@ namespace parse
                 keyword_value_pair< keywords::zmax, keywords::zmax_value >,
                 keyword_value_pair< keywords::xbase, keywords::xbase_value >,
                 keyword_value_pair< keywords::ybase, keywords::ybase_value >,
-                keyword_value_pair< keywords::zbase, keywords::zbase_value >,
+                keyword_value_pair< keywords::zbase, keywords::zbase_value >
+                >
+            {};
+
+        struct aovf_keyword_value_line
+            : pegtl::sor< 
+                ovf_keyword_value_line,
                 // Atomistic extension
+                keyword_value_pair< keywords::meshtype, keywords::meshtype_value_lattice >,
                 keyword_value_pair< keywords::anodes, keywords::anodes_value >,
                 keyword_value_pair< keywords::bnodes, keywords::bnodes_value >,
                 keyword_value_pair< keywords::cnodes, keywords::cnodes_value >,
@@ -304,7 +335,23 @@ namespace parse
              >
         {};
 
-        //
+        struct caovf_keyword_value_line
+            : pegtl::sor< 
+                ovf_keyword_value_line,
+                // Atomistic extension
+                magic_keyword_value_pair< keywords::meshtype, keywords::meshtype_value_lattice >,
+                magic_keyword_value_pair< keywords::anodes, keywords::anodes_value >,
+                magic_keyword_value_pair< keywords::bnodes, keywords::bnodes_value >,
+                magic_keyword_value_pair< keywords::cnodes, keywords::cnodes_value >,
+                magic_keyword_value_pair< keywords::bravaisa, keywords::bravaisa_value >,
+                magic_keyword_value_pair< keywords::bravaisb, keywords::bravaisb_value >,
+                magic_keyword_value_pair< keywords::bravaisc, keywords::bravaisc_value >,
+                magic_keyword_value_pair< keywords::ncellpoints, keywords::ncellpoints_value >,
+                magic_keyword_value_pair< keywords::basis, keywords::basis_value >
+             >
+        {};
+
+        template<typename keyword_value_line_t>
         struct header
             : pegtl::seq<
                 begin, TAO_PEGTL_ISTRING("Header"), finish_line,
@@ -312,7 +359,7 @@ namespace parse
                     pegtl::seq<end, TAO_PEGTL_ISTRING("Header")>,
                     pegtl::must<
                         skippable_lines,
-                        keyword_value_line,
+                        keyword_value_line_t,
                         skippable_lines
                     >
                 >,
@@ -347,12 +394,13 @@ namespace parse
         //////////////////////////////////////////////
 
         //
+        template<typename keyword_value_line_t>
         struct segment_header
             : pegtl::seq<
                 pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
                 pegtl::seq< begin, TAO_PEGTL_ISTRING("Segment"), pegtl::eol>,
                 pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
-                header,
+                header<keyword_value_line_t>,
                 pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
                 pegtl::until<pegtl::seq<end, TAO_PEGTL_ISTRING("Segment")>>, pegtl::eol >
         {};
@@ -362,8 +410,8 @@ namespace parse
         struct ovf_segment_header_action : keywords::kw_action<Rule>
         {};
 
-        template<>
-        struct ovf_segment_header_action< segment_header >
+        template<typename keyword_value_line_t>
+        struct ovf_segment_header_action< segment_header<keyword_value_line_t> >
         {
             template< typename Input >
             static void apply( const Input& in, ovf_file & file, ovf_segment & segment )
@@ -396,10 +444,9 @@ namespace parse
                 if( !file._state->found_meshtype )
                     missing_keywords.push_back("meshtype");
 
-                if( std::string(segment.meshtype) == "rectangular" )
+                if( std::string(segment.meshtype) == "rectangular" || (file.ovf_extension_format == OVF_EXTENSION_FORMAT_AOVF_COMP && file._state->found_meshtype_atomistic) )
                 {
                     segment.N = segment.n_cells[0] * segment.n_cells[1] * segment.n_cells[2];
-
                     if( !file._state->found_xbase )
                         missing_keywords.push_back("xbase");
                     if( !file._state->found_ybase )
@@ -449,7 +496,7 @@ namespace parse
                         wrong_keywords.push_back("pointcount");
                 }
 
-                if( std::string(segment.meshtype) == "lattice" )
+                if( std::string(segment.meshtype) == "lattice" || file._state->found_meshtype_atomistic )
                 {
                     segment.N = segment.n_cells[0] * segment.n_cells[1] * segment.n_cells[2] * segment.ncellpoints;
                     if( !file._state->found_anodes )
@@ -552,12 +599,13 @@ namespace parse
                 >
         {};
 
+        template<typename keyword_value_line_t>
         struct segment_data
             : pegtl::seq<
                 pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
                 begin, TAO_PEGTL_ISTRING("Segment"), pegtl::eol,
                 pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
-                header,
+                header<keyword_value_line_t>,
                 pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
                 pegtl::sor< data_text, data_csv, data_binary_4, data_binary_8 >,
                 pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
@@ -763,7 +811,19 @@ namespace parse
         };
 
         template<> template< typename Input, typename... States >
-        void ovf_segment_header_control< keyword_value_line >::raise( const Input& in, States&&... )
+        void ovf_segment_header_control< ovf_keyword_value_line >::raise( const Input& in, States&&... )
+        {
+            throw keyword_value_line_error( in );
+        }
+
+        template<> template< typename Input, typename... States >
+        void ovf_segment_header_control< aovf_keyword_value_line >::raise( const Input& in, States&&... )
+        {
+            throw keyword_value_line_error( in );
+        }
+
+        template<> template< typename Input, typename... States >
+        void ovf_segment_header_control< caovf_keyword_value_line >::raise( const Input& in, States&&... )
         {
             throw keyword_value_line_error( in );
         }

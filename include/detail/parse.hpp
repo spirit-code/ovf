@@ -70,7 +70,7 @@ namespace parse
         if( success )
         {
             success = false;
-            if( file.version == 2 || (file.version == 1 && std::string(file.version_string) == "AOVF") )
+            if( file.version == 2 || (file.version == 1 && (file.ovf_extension_format == OVF_EXTENSION_FORMAT_AOVF || file.ovf_extension_format == OVF_EXTENSION_FORMAT_AOVF_COMP )))
             {
                 success = pegtl::parse< pegtl::until<pegtl::until<pegtl::at< pegtl::seq<v2::begin, TAO_PEGTL_ISTRING("Segment"), pegtl::eol >>>> >( in, file );
                 success = pegtl::parse< pegtl::plus<v2::segment>, v2::ovf_segment_action >( in, file );
@@ -175,17 +175,24 @@ namespace parse
 
         bool success = false;
 
-        if( file.version == 2 || (file.version == 1 && std::string(file.version_string) == "AOVF") )
+        if( file.version == 2 )
         {
-            success = pegtl::parse< pegtl::plus<v2::segment_header>, v2::ovf_segment_header_action, v2::ovf_segment_header_control >( in, file, segment );
+            success = pegtl::parse< pegtl::plus<v2::segment_header<v2::ovf_keyword_value_line>>, v2::ovf_segment_header_action, v2::ovf_segment_header_control >( in, file, segment );
         }
         else if( file.version == 1 )
         {
-            // TODO...
-            file._state->message_latest = fmt::format(
-                "libovf segment_header: OVF version \'{}\' in file \'{}\' is not supported...",
-                file.file_name, file.version);
-            return OVF_INVALID;
+            if(file.ovf_extension_format == OVF_EXTENSION_FORMAT_AOVF)
+                success = pegtl::parse< pegtl::plus<v2::segment_header<v2::aovf_keyword_value_line>>, v2::ovf_segment_header_action, v2::ovf_segment_header_control >( in, file, segment );
+            else if (file.ovf_extension_format == OVF_EXTENSION_FORMAT_AOVF_COMP)
+                success = pegtl::parse< pegtl::plus<v2::segment_header<v2::caovf_keyword_value_line>>, v2::ovf_segment_header_action, v2::ovf_segment_header_control >( in, file, segment );
+            else
+            {
+                // TODO...
+                file._state->message_latest = fmt::format(
+                    "libovf segment_header: OVF version \'{}\' in file \'{}\' is not supported...",
+                    file.file_name, file.version);
+                return OVF_INVALID;
+            }
         }
         else
         {
@@ -241,23 +248,38 @@ namespace parse
         int retcode = OVF_ERROR;
         bool success = false;
 
-        if( file.version == 2  || (file.version == 1 && std::string(file.version_string) == "AOVF"))
+        if( file.version == 2 )
         {
             file._state->max_data_index = segment.N*segment.valuedim;
-            success = pegtl::parse< v2::segment_data, v2::ovf_segment_data_action >( in, file, segment, data );
+            success = pegtl::parse< v2::segment_data<v2::ovf_keyword_value_line>, v2::ovf_segment_data_action >( in, file, segment, data );
             file._state->current_line = 0;
             file._state->current_column = 0;
         }
         else if( file.version == 1 )
         {
-            // TODO...
-            file._state->message_latest = fmt::format(
-                "libovf segment_data: OVF version \'{}\' in file \'{}\' is not supported...",
-                file.file_name, file.version);
-            return OVF_INVALID;
-        }
-        else
-        {
+            if(file.ovf_extension_format == OVF_EXTENSION_FORMAT_AOVF)
+            {
+                file._state->max_data_index = segment.N*segment.valuedim;
+                success = pegtl::parse< v2::segment_data<v2::aovf_keyword_value_line>, v2::ovf_segment_data_action >( in, file, segment, data );
+                file._state->current_line = 0;
+                file._state->current_column = 0;
+            }
+            else if (file.ovf_extension_format == OVF_EXTENSION_FORMAT_AOVF_COMP) 
+            {
+                file._state->max_data_index = segment.N*segment.valuedim;
+                success = pegtl::parse< v2::segment_data<v2::caovf_keyword_value_line>, v2::ovf_segment_data_action >( in, file, segment, data );
+                file._state->current_line = 0;
+                file._state->current_column = 0;
+            }
+            else
+            {
+                // TODO...
+                file._state->message_latest = fmt::format(
+                    "libovf segment_data: OVF version \'{}\' in file \'{}\' is not supported...",
+                    file.file_name, file.version);
+                return OVF_INVALID;
+            }
+        } else {
             file._state->message_latest = fmt::format(
                 "libovf segment_data: OVF version \'{}\' in file \'{}\' is not supported...",
                 file.file_name, file.version);

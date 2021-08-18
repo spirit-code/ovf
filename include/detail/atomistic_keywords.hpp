@@ -9,6 +9,24 @@ namespace detail
 {
 namespace keywords
 {
+
+    ////// meshtype
+
+    // Only reimplement the new value
+    struct meshtype_value_lattice : TAO_PEGTL_ISTRING("lattice") // Only 'rectangular', 'irregular' or 'lattice' allowed
+    { };
+
+    template<>
+    struct kw_action< meshtype_value_lattice >
+    {
+        template< typename Input >
+        static void apply( const Input& in, ovf_file & f, ovf_segment & segment)
+        {
+            segment.meshtype = strdup(in.string().c_str());
+            f._state->found_meshtype_atomistic = true;
+        }
+    };
+
     ////// bravaisa
     // x
     struct bravaisa_value_x : pegtl::pad<ovf::detail::parse::decimal_number, pegtl::blank>

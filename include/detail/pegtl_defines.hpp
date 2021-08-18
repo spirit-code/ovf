@@ -50,6 +50,7 @@ struct parser_state
     bool found_basis        = false;
 
     // Needed to keep track of the current line when reading in the basis positions
+    bool found_meshtype_atomistic = false;
     int _cur_basis_line = 0;
 
     /*
