@@ -42,6 +42,15 @@ struct parser_state
     bool found_ynodes       = false;
     bool found_znodes       = false;
     bool found_pointcount   = false;
+    bool found_bravaisa     = false;
+    bool found_bravaisb     = false;
+    bool found_bravaisc     = false;
+    bool found_ncellpoints  = false;
+    bool found_anodes       = false;
+    bool found_bnodes       = false;
+    bool found_cnodes       = false;
+    bool found_basis        = false;
+    int _cur_basis_line = 0;
 
     /*
     messages, e.g. in case a function returned OVF_ERROR.

@@ -162,6 +162,17 @@ namespace parse
         file._state->found_ynodes       = false;
         file._state->found_znodes       = false;
         file._state->found_pointcount   = false;
+        file._state->found_bravaisa     = false;
+        file._state->found_bravaisb     = false;
+        file._state->found_bravaisc     = false;
+        file._state->found_ncellpoints  = false;
+        file._state->found_anodes       = false;
+        file._state->found_bnodes       = false;
+        file._state->found_cnodes       = false;
+        file._state->found_basis        = false;
+
+        file._state->_cur_basis_line = 0;
+
         bool success = false;
 
         if( file.version == 2 )

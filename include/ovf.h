@@ -55,6 +55,16 @@ struct ovf_segment {
     float lattice_constant;
     float origin[3];
 
+    /* fields for the atomistic extension */
+    float bravaisa[3];
+    float bravaisb[3];
+    float bravaisc[3];
+    int ncellpoints;
+    int anodes;
+    int bnodes;
+    int cnodes;
+    float * basis;
+
     /* then some "private" internal fields */
 };
 
@@ -64,6 +74,7 @@ struct parser_state;
 /* the main struct which keeps the info on the main header of a file */
 struct ovf_file {
     const char * file_name;
+    char * version_string;
 
     int version;
 
@@ -73,6 +84,9 @@ struct ovf_file {
     bool is_ovf;
     /* number of segments the file should contain */
     int n_segments;
+
+    /* use the atomistic extension */
+    bool atomistic;
 
     /* then some "private" internal fields */
     struct parser_state * _state;

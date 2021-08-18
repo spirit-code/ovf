@@ -15,6 +15,7 @@ try
     ovf_file_ptr->is_ovf     = false;
     ovf_file_ptr->n_segments = 0;
     ovf_file_ptr->_state     = new parser_state;
+    ovf_file_ptr->atomistic  = false;
 
     // Check if the file exists
     std::fstream filestream( filename );

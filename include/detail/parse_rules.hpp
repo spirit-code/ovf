@@ -4,6 +4,7 @@
 
 #include "ovf.h"
 #include "keywords.hpp"
+#include "atomistic_keywords.hpp"
 #include "pegtl_defines.hpp"
 #include <detail/helpers.hpp>
 
@@ -262,7 +263,16 @@ namespace parse
                 keyword_value_pair< keywords::zmax, keywords::zmax_value >,
                 keyword_value_pair< keywords::xbase, keywords::xbase_value >,
                 keyword_value_pair< keywords::ybase, keywords::ybase_value >,
-                keyword_value_pair< keywords::zbase, keywords::zbase_value >
+                keyword_value_pair< keywords::zbase, keywords::zbase_value >,
+                // Atomistic extension
+                keyword_value_pair< keywords::anodes, keywords::anodes_value >,
+                keyword_value_pair< keywords::bnodes, keywords::bnodes_value >,
+                keyword_value_pair< keywords::cnodes, keywords::cnodes_value >,
+                keyword_value_pair< keywords::bravaisa, keywords::bravaisa_value >,
+                keyword_value_pair< keywords::bravaisb, keywords::bravaisb_value >,
+                keyword_value_pair< keywords::bravaisc, keywords::bravaisc_value >,
+                keyword_value_pair< keywords::ncellpoints, keywords::ncellpoints_value >,
+                keyword_value_pair< keywords::basis, keywords::basis_value >
              >
         {};
 

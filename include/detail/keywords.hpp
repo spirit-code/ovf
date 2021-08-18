@@ -20,6 +20,7 @@ namespace detail
 
 namespace keywords
 {
+    using ovf::detail::parse::decimal_number;
     namespace pegtl = tao::pegtl;
 
     template< typename Rule >
@@ -29,7 +30,7 @@ namespace keywords
 
     struct end_kw_value : pegtl::at< pegtl::sor<pegtl::eol, pegtl::istring<'#'>> > {};
     struct standard_kw_value : pegtl::until< end_kw_value > {};
-    struct numeric_kw_value : pegtl::seq<pegtl::pad< ovf::detail::parse::decimal_number, pegtl::blank >, end_kw_value > {};
+    struct numeric_kw_value : pegtl::seq<pegtl::pad< decimal_number, pegtl::blank >, end_kw_value > {};
 
     ////// title
     struct title : TAO_PEGTL_ISTRING("title")
