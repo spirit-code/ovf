@@ -17,8 +17,6 @@ struct parser_state
     int current_column = 0;
     int current_line = 0;
 
-    std::string keyword="", value="";
-
     // Whether certain keywords were found in parsing
     bool found_title        = false;
     bool found_meshunit     = false;
@@ -50,6 +48,8 @@ struct parser_state
     bool found_bnodes       = false;
     bool found_cnodes       = false;
     bool found_basis        = false;
+
+    // Needed to keep track of the current line when reading in the basis positions
     int _cur_basis_line = 0;
 
     /*
