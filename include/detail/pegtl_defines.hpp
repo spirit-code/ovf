@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <ios>
+#include <tao/pegtl.hpp>
 
 struct parser_state
 {
@@ -55,5 +56,75 @@ struct parser_state
 
     std::ios::pos_type n_segments_pos = 0;
 };
+
+namespace ovf
+{
+namespace detail
+{
+namespace parse
+{
+
+    namespace pegtl = tao::pegtl;
+
+    struct opt_plus_minus
+        : pegtl::opt< pegtl::one< '+', '-' > >
+    {};
+
+    struct inf
+        : pegtl::seq<
+            pegtl::istring< 'i', 'n', 'f' >,
+            pegtl::opt< pegtl::istring< 'i', 'n', 'i', 't', 'y' > > >
+    {};
+
+    struct nan
+        : pegtl::seq<
+            pegtl::istring< 'n', 'a', 'n' >,
+            pegtl::opt< pegtl::one< '(' >,
+                        pegtl::plus< pegtl::alnum >,
+                        pegtl::one< ')' > > >
+    {};
+
+    template< typename D >
+    struct basic_number
+        : pegtl::if_then_else<
+            pegtl::one< '.' >,
+            pegtl::plus< D >,
+            pegtl::seq<
+                pegtl::plus< D >,
+                pegtl::opt< pegtl::one< '.' > >,
+                pegtl::star< D >
+            >
+        >
+    {};
+
+    struct exponent
+        : pegtl::seq<
+            opt_plus_minus,
+            pegtl::plus< pegtl::digit > >
+    {};
+
+    struct decimal_number
+        : pegtl::seq<
+            basic_number< pegtl::digit >,
+            pegtl::opt< pegtl::one< 'e', 'E' >, exponent > >
+    {};
+
+    struct hexadecimal_number // TODO: is this actually hexadecimal??
+        : pegtl::seq<
+            pegtl::one< '0' >,
+            pegtl::one< 'x', 'X' >,
+            basic_number< pegtl::xdigit >,
+            pegtl::opt< pegtl::one< 'p', 'P' >, exponent > >
+    {};
+
+    struct float_value
+        : pegtl::seq<
+            opt_plus_minus,
+            decimal_number >
+    {};
+
+}
+}
+}
 
 #endif

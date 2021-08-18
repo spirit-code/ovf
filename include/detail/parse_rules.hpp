@@ -3,6 +3,7 @@
 #define LIBOVF_DETAIL_PARSE_RULES_H
 
 #include "ovf.h"
+#include "keywords.hpp"
 #include "pegtl_defines.hpp"
 #include <detail/helpers.hpp>
 
@@ -156,49 +157,6 @@ namespace parse
 
         //////////////////////////////////////////////
 
-        struct opt_plus_minus
-            : pegtl::opt< pegtl::one< '+', '-' > >
-        {};
-
-        struct inf
-            : pegtl::seq<
-                pegtl::istring< 'i', 'n', 'f' >,
-                pegtl::opt< pegtl::istring< 'i', 'n', 'i', 't', 'y' > > >
-        {};
-
-        struct nan
-            : pegtl::seq<
-                pegtl::istring< 'n', 'a', 'n' >,
-                pegtl::opt< pegtl::one< '(' >,
-                            pegtl::plus< pegtl::alnum >,
-                            pegtl::one< ')' > > >
-        {};
-
-        template< typename D >
-        struct basic_number
-            : pegtl::if_then_else<
-                pegtl::one< '.' >,
-                pegtl::plus< D >,
-                pegtl::seq<
-                    pegtl::plus< D >,
-                    pegtl::opt< pegtl::one< '.' > >,
-                    pegtl::star< D >
-                >
-            >
-        {};
-
-        struct exponent
-            : pegtl::seq<
-                opt_plus_minus,
-                pegtl::plus< pegtl::digit > >
-        {};
-
-        struct decimal_number
-            : pegtl::seq<
-                basic_number< pegtl::digit >,
-                pegtl::opt< pegtl::one< 'e', 'E' >, exponent > >
-        {};
-
         struct hexadecimal_number // TODO: is this actually hexadecimal??
             : pegtl::seq<
                 pegtl::one< '0' >,
@@ -269,20 +227,43 @@ namespace parse
 
         //////////////////////////////////////////////
 
-        struct keyword
-            : pegtl::until< pegtl::at<TAO_PEGTL_ISTRING(":")>,
-                pegtl::if_must<pegtl::not_at<pegtl::eol>, pegtl::any> >//, pegtl::not_at<pegtl::sor<pegtl::eol, TAO_PEGTL_ISTRING("##")>> >
-        {};
-
-        struct value   : pegtl::seq< pegtl::until<pegtl::at< line_end >> > {};
-
-        struct keyword_value_line
+        template<typename kw, typename val>
+        struct keyword_value_pair
             : pegtl::seq<
                 prefix,
-                pegtl::pad< keyword, pegtl::blank >,
+                pegtl::pad< kw, pegtl::blank >,
                 TAO_PEGTL_ISTRING(":"),
-                pegtl::pad< value, pegtl::blank >,
+                pegtl::pad< val, pegtl::blank >,
+                pegtl::until<pegtl::at<line_end>>,
                 finish_line >
+        {};
+
+        struct keyword_value_line
+            : pegtl::sor< 
+                keyword_value_pair< keywords::title, keywords::title_value >,
+                keyword_value_pair< keywords::desc, keywords::desc_value >,
+                keyword_value_pair< keywords::valuedim, keywords::valuedim_value >,
+                keyword_value_pair< keywords::valueunits, keywords::valueunits_value >,
+                keyword_value_pair< keywords::valuelabels, keywords::valuelabels_value >,
+                keyword_value_pair< keywords::meshtype, keywords::meshtype_value >,
+                keyword_value_pair< keywords::meshunit, keywords::meshunit_value >,
+                keyword_value_pair< keywords::pointcount, keywords::pointcount_value >,
+                keyword_value_pair< keywords::xnodes, keywords::xnodes_value >,
+                keyword_value_pair< keywords::ynodes, keywords::ynodes_value >,
+                keyword_value_pair< keywords::znodes, keywords::znodes_value >,
+                keyword_value_pair< keywords::xstepsize, keywords::xstepsize_value >,
+                keyword_value_pair< keywords::ystepsize, keywords::ystepsize_value >,
+                keyword_value_pair< keywords::zstepsize, keywords::zstepsize_value >,
+                keyword_value_pair< keywords::xmin, keywords::xmin_value >,
+                keyword_value_pair< keywords::ymin, keywords::ymin_value >,
+                keyword_value_pair< keywords::zmin, keywords::zmin_value >,
+                keyword_value_pair< keywords::xmax, keywords::xmax_value >,
+                keyword_value_pair< keywords::ymax, keywords::ymax_value >,
+                keyword_value_pair< keywords::zmax, keywords::zmax_value >,
+                keyword_value_pair< keywords::xbase, keywords::xbase_value >,
+                keyword_value_pair< keywords::ybase, keywords::ybase_value >,
+                keyword_value_pair< keywords::zbase, keywords::zbase_value >
+             >
         {};
 
         //
@@ -340,8 +321,7 @@ namespace parse
 
         // Class template for user-defined actions that does nothing by default.
         template< typename Rule >
-        struct ovf_segment_header_action
-            : pegtl::nothing< Rule >
+        struct ovf_segment_header_action : keywords::kw_action<Rule>
         {};
 
         template<>
@@ -467,163 +447,6 @@ namespace parse
                 ++file._state->tmp_idx;
             }
         };
-
-        ////////////////////////////////////////////////////////////////////////////////////////////
-
-        template<>
-        struct ovf_segment_header_action< keyword >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                f._state->keyword = in.string();
-                std::transform(f._state->keyword.begin(), f._state->keyword.end(),f._state->keyword.begin(), ::tolower);
-            }
-        };
-
-        template<>
-        struct ovf_segment_header_action< value >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                f._state->value = in.string();
-            }
-        };
-
-        template<>
-        struct ovf_segment_header_action< keyword_value_line >
-        {
-            template< typename Input >
-            static void apply( const Input& in, ovf_file & f, ovf_segment & segment )
-            {
-                if( f._state->keyword == "title" )
-                {
-                    segment.title = strdup(f._state->value.c_str());
-                    f._state->found_title = true;
-                }
-                else if( f._state->keyword == "desc" )
-                    segment.comment = strdup(f._state->value.c_str());
-                else if( f._state->keyword == "meshunit" )
-                {
-                    segment.meshunit = strdup(f._state->value.c_str());
-                    f._state->found_meshunit = true;
-                }
-                else if( f._state->keyword == "valuedim" )
-                {
-                    segment.valuedim = std::stoi(f._state->value.c_str());
-                    f._state->found_valuedim = true;
-                }
-                else if( f._state->keyword == "valueunits" )
-                {
-                    segment.valueunits = strdup(f._state->value.c_str());
-                    f._state->found_valueunits = true;
-                }
-                else if( f._state->keyword == "valuelabels" )
-                {
-                    segment.valuelabels = strdup(f._state->value.c_str());
-                    f._state->found_valuelabels = true;
-                }
-                else if( f._state->keyword == "xmin" )
-                {
-                    segment.bounds_min[0] = std::stof(f._state->value.c_str());
-                    f._state->found_xmin = true;
-                }
-                else if( f._state->keyword == "ymin" )
-                {
-                    segment.bounds_min[1] = std::stof(f._state->value.c_str());
-                    f._state->found_ymin = true;
-                }
-                else if( f._state->keyword == "zmin" )
-                {
-                    segment.bounds_min[2] = std::stof(f._state->value.c_str());
-                    f._state->found_zmin = true;
-                }
-                else if( f._state->keyword == "xmax" )
-                {
-                    segment.bounds_max[0] = std::stof(f._state->value.c_str());
-                    f._state->found_xmax = true;
-                }
-                else if( f._state->keyword == "ymax" )
-                {
-                    segment.bounds_max[1] = std::stof(f._state->value.c_str());
-                    f._state->found_ymax = true;
-                }
-                else if( f._state->keyword == "zmax" )
-                {
-                    segment.bounds_max[2] = std::stof(f._state->value.c_str());
-                    f._state->found_zmax = true;
-                }
-                else if( f._state->keyword == "meshtype" )
-                {
-                    std::string meshtype = f._state->value;
-                    std::transform(meshtype.begin(), meshtype.end(), meshtype.begin(), ::tolower);
-                    segment.meshtype = strdup(meshtype.c_str());
-                    f._state->found_meshtype = true;
-                }
-                else if( f._state->keyword == "xbase" )
-                {
-                    segment.origin[0] = std::stof(f._state->value.c_str());
-                    f._state->found_xbase = true;
-                }
-                else if( f._state->keyword == "ybase" )
-                {
-                    segment.origin[1] = std::stof(f._state->value.c_str());
-                    f._state->found_ybase = true;
-                }
-                else if( f._state->keyword == "zbase" )
-                {
-                    segment.origin[2] = std::stof(f._state->value.c_str());
-                    f._state->found_zbase = true;
-                }
-                else if( f._state->keyword == "xstepsize" )
-                {
-                    segment.step_size[0] = std::stof(f._state->value.c_str());
-                    f._state->found_xstepsize = true;
-                }
-                else if( f._state->keyword == "ystepsize" )
-                {
-                    segment.step_size[1] = std::stof(f._state->value.c_str());
-                    f._state->found_ystepsize = true;
-                }
-                else if( f._state->keyword == "zstepsize" )
-                {
-                    segment.step_size[2] = std::stof(f._state->value.c_str());
-                    f._state->found_zstepsize = true;
-                }
-                else if( f._state->keyword == "xnodes" )
-                {
-                    segment.n_cells[0] = std::stoi(f._state->value.c_str());
-                    f._state->found_xnodes = true;
-                }
-                else if( f._state->keyword == "ynodes" )
-                {
-                    segment.n_cells[1] = std::stoi(f._state->value.c_str());
-                    f._state->found_ynodes = true;
-                }
-                else if( f._state->keyword == "znodes" )
-                {
-                    segment.n_cells[2] = std::stoi(f._state->value.c_str());
-                    f._state->found_znodes = true;
-                }
-                else if( f._state->keyword == "pointcount" )
-                {
-                    segment.pointcount = std::stoi(f._state->value.c_str());
-                    f._state->found_pointcount = true;
-                }
-                else
-                {
-                    // UNKNOWN KEYWORD
-                    throw tao::pegtl::parse_error( fmt::format(
-                        "unknown keyword \"{}\": \"{}\"", f._state->keyword, f._state->value), in );
-                }
-
-                f._state->keyword = "";
-                f._state->value = "";
-            }
-        };
-
-        ////////////////////////////////////////////////////////////////////////////////////////////
 
         struct data_text
             : pegtl::seq<
