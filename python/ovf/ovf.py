@@ -34,7 +34,15 @@ class ovf_segment(ctypes.Structure):
         ("bounds_min",       ctypes.c_float*3),
         ("bounds_max",       ctypes.c_float*3),
         ("lattice_constant", ctypes.c_float),
-        ("origin",           ctypes.c_float*3)
+        ("origin",           ctypes.c_float*3),
+        ("bravaisa",         ctypes.c_float*3),
+        ("bravaisb",         ctypes.c_float*3),
+        ("bravaisc",         ctypes.c_float*3),
+        ("ncellpoints",      ctypes.c_int),
+        ("anodes",           ctypes.c_int),
+        ("bnodes",           ctypes.c_int),
+        ("cnodes",           ctypes.c_int),
+        ("basis",            ctypes.POINTER(ctypes.c_float))
     ]
 
     def __init__(self, title="", comment="", valuedim=1, valueunits="", valuelabels="", meshtype="", meshunits="",
@@ -108,10 +116,12 @@ class _ovf_file(ctypes.Structure):
     ### Some properties
     _fields_ = [
         ("file_name",  ctypes.c_char_p),
+        ("version_string",  ctypes.c_char_p),
         ("version",    ctypes.c_int),
         ("found",      ctypes.c_bool),
         ("is_ovf",     ctypes.c_bool),
         ("n_segments", ctypes.c_int),
+        ("atomistic",  ctypes.c_bool),
         ("_state",     ctypes.c_void_p)
     ]
 
