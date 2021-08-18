@@ -286,7 +286,8 @@ TEST_CASE( "Atomistic Write", "[write]" )
 
         // open
         auto file = ovf_open(testfile);
-        file->atomistic = true; // Set the flag for the atomistic extension
+
+        file->ovf_extension_format = OVF_EXTENSION_FORMAT_AOVF; // Set the flag for the atomistic extension
 
         // write
         int success = ovf_write_segment_8(file, segment, field.data(), OVF_FORMAT_TEXT);
