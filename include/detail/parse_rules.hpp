@@ -452,11 +452,39 @@ namespace parse
                 if( std::string(segment.meshtype) == "lattice" )
                 {
                     segment.N = segment.anodes * segment.bnodes * segment.cnodes * segment.ncellpoints;
-                    // if( !file._state->found_pointcount )
-                    //     missing_keywords.push_back("pointcount");
+                    if( !file._state->found_anodes )
+                        missing_keywords.push_back("anodes");
+                    if( !file._state->found_bnodes )
+                        missing_keywords.push_back("bnodes");
+                    if( !file._state->found_cnodes )
+                        missing_keywords.push_back("cnodes");
+                    if( !file._state->found_ncellpoints )
+                        missing_keywords.push_back("ncellpoints");
+                    if( !file._state->found_basis )
+                        missing_keywords.push_back("basis");
+                    if( !file._state->found_bravaisa )
+                        missing_keywords.push_back("bravaisa");
+                    if( !file._state->found_bravaisb )
+                        missing_keywords.push_back("bravaisb");
+                    if( !file._state->found_bravaisc )
+                        missing_keywords.push_back("bravaisc");
                 } else {
-                    // if( file._state->found_pointcount )
-                    //     wrong_keywords.push_back("pointcount");
+                    if( file._state->found_anodes )
+                        wrong_keywords.push_back("anodes");
+                    if( file._state->found_bnodes )
+                        wrong_keywords.push_back("bnodes");
+                    if( file._state->found_cnodes )
+                        wrong_keywords.push_back("cnodes");
+                    if( file._state->found_ncellpoints )
+                        wrong_keywords.push_back("ncellpoints");
+                    if( file._state->found_basis )
+                        wrong_keywords.push_back("basis");
+                    if( file._state->found_bravaisa )
+                        wrong_keywords.push_back("bravaisa");
+                    if( file._state->found_bravaisb )
+                        wrong_keywords.push_back("bravaisb");
+                    if( file._state->found_bravaisc )
+                        wrong_keywords.push_back("bravaisc");
                 }
 
                 if( missing_keywords.size() > 0 )
