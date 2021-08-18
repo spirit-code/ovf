@@ -27,6 +27,16 @@ namespace parse
         : pegtl::string< '#' >
     {};
 
+    // "#"
+    struct magic_char
+        : pegtl::string< '%' >
+    {};
+
+    // "##% "
+    struct magic_prefix
+        : pegtl::seq< pegtl::string< '#', '#'>, magic_char >
+    {};
+
     // "#\eol"
     struct empty_line
         : pegtl::seq< pegtl::string< '#' >, pegtl::star<pegtl::blank> >
@@ -37,9 +47,17 @@ namespace parse
         : pegtl::range< '1', '2' >
     {};
 
+    struct version_string
+        : pegtl::sor< TAO_PEGTL_ISTRING("OOMMF OVF"), TAO_PEGTL_ISTRING("AOVF") >
+    {};
+
     // " OOMMF OVF "
     struct version
-        : pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("OOMMF OVF"), pegtl::blank >, version_number, pegtl::until<pegtl::eol> >
+        :
+            pegtl::sor<
+                pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("OOMMF OVF"), pegtl::blank>, pegtl::until<pegtl::eol>, magic_prefix, pegtl::pad< version_string, pegtl::blank>, version_number, pegtl::until<pegtl::eol> >,
+                pegtl::seq< prefix, pegtl::pad< version_string, pegtl::blank >, version_number, pegtl::until<pegtl::eol> >
+            >
     {};
 
     // " Segment count: "
@@ -76,6 +94,16 @@ namespace parse
         static void apply( const Input& in, ovf_file & file )
         {
             file.version = std::stoi(in.string());
+        }
+    };
+
+    template<>
+    struct ovf_file_action< version_string >
+    {
+        template< typename Input >
+        static void apply( const Input& in, ovf_file & file )
+        {
+            file.version_string = strdup(in.string().c_str());
         }
     };
 
@@ -345,12 +373,6 @@ namespace parse
                 std::vector<std::string> missing_keywords(0);
                 std::vector<std::string> wrong_keywords(0);
 
-                if( std::string(segment.meshtype) != "rectangular" && std::string(segment.meshtype) != "irregular")
-                {
-                    throw tao::pegtl::parse_error( fmt::format(
-                                "Invalid meshtype: \"{}\"", segment.meshtype), in );
-                }
-
                 if( !file._state->found_title )
                     missing_keywords.push_back("title");
                 if( !file._state->found_meshunit )
@@ -425,6 +447,16 @@ namespace parse
                 } else {
                     if( file._state->found_pointcount )
                         wrong_keywords.push_back("pointcount");
+                }
+
+                if( std::string(segment.meshtype) == "lattice" )
+                {
+                    segment.N = segment.anodes * segment.bnodes * segment.cnodes * segment.ncellpoints;
+                    // if( !file._state->found_pointcount )
+                    //     missing_keywords.push_back("pointcount");
+                } else {
+                    // if( file._state->found_pointcount )
+                    //     wrong_keywords.push_back("pointcount");
                 }
 
                 if( missing_keywords.size() > 0 )

@@ -70,7 +70,7 @@ namespace parse
         if( success )
         {
             success = false;
-            if( file.version == 2 )
+            if( file.version == 2 || (file.version == 1 && std::string(file.version_string) == "AOVF") )
             {
                 success = pegtl::parse< pegtl::until<pegtl::until<pegtl::at< pegtl::seq<v2::begin, TAO_PEGTL_ISTRING("Segment"), pegtl::eol >>>> >( in, file );
                 success = pegtl::parse< pegtl::plus<v2::segment>, v2::ovf_segment_action >( in, file );
@@ -175,7 +175,7 @@ namespace parse
 
         bool success = false;
 
-        if( file.version == 2 )
+        if( file.version == 2 || (file.version == 1 && std::string(file.version_string) == "AOVF") )
         {
             success = pegtl::parse< pegtl::plus<v2::segment_header>, v2::ovf_segment_header_action, v2::ovf_segment_header_control >( in, file, segment );
         }
@@ -241,7 +241,7 @@ namespace parse
         int retcode = OVF_ERROR;
         bool success = false;
 
-        if( file.version == 2 )
+        if( file.version == 2  || (file.version == 1 && std::string(file.version_string) == "AOVF"))
         {
             file._state->max_data_index = segment.N*segment.valuedim;
             success = pegtl::parse< v2::segment_data, v2::ovf_segment_data_action >( in, file, segment, data );
