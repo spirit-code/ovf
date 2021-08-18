@@ -277,8 +277,7 @@ namespace keywords
     { };
 
     struct basis_value : pegtl::seq< pegtl::eol, pegtl::plus< basis_value_line > >
-    {
-    };
+    { };
 
     template<>
     struct kw_action< cur_basis_line_value_x >
@@ -288,7 +287,7 @@ namespace keywords
         {
             if( !f._state->found_ncellpoints ) // Need to make sure that the basis array is already allocated
             {
-                throw std::exception("ncellpoints must be specified before the basis!");
+                throw tao::pegtl::parse_error(fmt::format("ncellpoints must be specified before the basis!"), in);
             }
             segment.basis[3 * f._state->_cur_basis_line + 0] = std::stof(in.string());
         }
@@ -302,7 +301,7 @@ namespace keywords
         {
             if( !f._state->found_ncellpoints ) // Need to make sure that the basis array is already allocated
             {
-                throw std::exception("ncellpoints must be specified before the basis!");
+                throw tao::pegtl::parse_error(fmt::format("ncellpoints must be specified before the basis!"), in);
             }
             segment.basis[3*f._state->_cur_basis_line + 1] = std::stof(in.string());
         }
@@ -316,7 +315,7 @@ namespace keywords
         {
             if( !f._state->found_ncellpoints ) // Need to make sure that the basis array is already allocated
             {
-                throw std::exception("ncellpoints must be specified before the basis!");
+                throw tao::pegtl::parse_error(fmt::format("ncellpoints must be specified before the basis!"), in);
             }
             segment.basis[3* f._state->_cur_basis_line + 2] = std::stof(in.string());
         }
@@ -341,7 +340,7 @@ namespace keywords
             f._state->found_basis = true;
             if( segment.ncellpoints != f._state->_cur_basis_line ) // Need to make sure that the basis array is already allocated
             {
-                throw std::exception( fmt::format("ncellpoints ({}) and number of specified basis atoms ({}) does not match!", segment.ncellpoints, f._state->_cur_basis_line ));
+                throw tao::pegtl::parse_error( fmt::format("ncellpoints ({}) and number of specified basis atoms ({}) does not match!", segment.ncellpoints, f._state->_cur_basis_line ), in);
             }
         }
     };
