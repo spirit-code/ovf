@@ -111,7 +111,15 @@ if( OVF_BUILD_PYTHON_BINDINGS )
     add_library( ${PROJECT_NAME}_python SHARED $<TARGET_OBJECTS:${PROJECT_NAME}> )
 
     set_property( TARGET ${PROJECT_NAME}_python PROPERTY OUTPUT_NAME "${PROJECT_NAME}" )
-    set_property( TARGET ${PROJECT_NAME}_python PROPERTY LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/python/ovf )
+
+    if(WIN32)
+        # On Windows the runtime_output_directory is used https://cmake.org/cmake/help/v3.9/manual/cmake-buildsystem.7.html#output-artifacts
+        set_property( TARGET ${PROJECT_NAME}_python PROPERTY RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/python/ovf ) # Use runtime_output_directory_debug to avoid an additional debug directory being created
+        set_property( TARGET ${PROJECT_NAME}_python PROPERTY RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/python/ovf )
+    else()
+        set_property( TARGET ${PROJECT_NAME}_python PROPERTY LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/python/ovf )
+    endif()
+
     set_property( TARGET ${PROJECT_NAME}_python PROPERTY LINK_FLAGS    ${OVF_LINK_FLAGS_COVERAGE} )
 
     ### Utility python files

@@ -4,8 +4,7 @@ OVF Parser Library
 
 [OVF format specification](#specification)
 
-[![Build Status](https://api.travis-ci.com/spirit-code/ovf.svg?branch=master)](https://travis-ci.com/github/spirit-code/ovf)
-[![Build status](https://ci.appveyor.com/api/projects/status/y04beatp3t3lc5td/branch/master?svg=true)](https://ci.appveyor.com/project/spirit-code/ovf)
+![Build Status](https://github.com/spirit-code/ovf/workflows/CI/badge.svg?branch=master)
 
 **[Python package](https://pypi.org/project/ovf/):** [![PyPI version](https://badge.fury.io/py/ovf.svg)](https://badge.fury.io/py/ovf)
 
