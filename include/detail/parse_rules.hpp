@@ -451,7 +451,7 @@ namespace parse
 
                 if( std::string(segment.meshtype) == "lattice" )
                 {
-                    segment.N = segment.anodes * segment.bnodes * segment.cnodes * segment.ncellpoints;
+                    segment.N = segment.n_cells[0] * segment.n_cells[1] * segment.n_cells[2] * segment.ncellpoints;
                     if( !file._state->found_anodes )
                         missing_keywords.push_back("anodes");
                     if( !file._state->found_bnodes )
@@ -489,7 +489,7 @@ namespace parse
 
                 if( missing_keywords.size() > 0 )
                 {
-                    std::string message = fmt::format( "Missing keywords: \"{}\"", missing_keywords[0] );
+                    std::string message = fmt::format( "Missing keywords for meshtype \"{}\": \"{}\"", segment.meshtype, missing_keywords[0] );
                     for( int i=1; i < missing_keywords.size(); ++i )
                         message += fmt::format( ", \"{}\"", missing_keywords[i] );
                     throw tao::pegtl::parse_error( message, in );

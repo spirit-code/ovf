@@ -60,9 +60,6 @@ struct ovf_segment {
     float bravaisb[3];
     float bravaisc[3];
     int ncellpoints;
-    int anodes;
-    int bnodes;
-    int cnodes;
     float * basis;
 
     /* then some "private" internal fields */

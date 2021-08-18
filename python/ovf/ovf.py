@@ -39,9 +39,6 @@ class ovf_segment(ctypes.Structure):
         ("bravaisb",         ctypes.c_float*3),
         ("bravaisc",         ctypes.c_float*3),
         ("ncellpoints",      ctypes.c_int),
-        ("anodes",           ctypes.c_int),
-        ("bnodes",           ctypes.c_int),
-        ("cnodes",           ctypes.c_int),
         ("basis",            ctypes.POINTER(ctypes.c_float))
     ]
 

@@ -219,7 +219,7 @@ namespace keywords
         template< typename Input >
         static void apply( const Input& in, ovf_file & f, ovf_segment & segment)
         {
-            segment.anodes = std::stoi(in.string());
+            segment.n_cells[0] = std::stoi(in.string());
             f._state->found_anodes = true;
         }
     };
@@ -237,7 +237,7 @@ namespace keywords
         template< typename Input >
         static void apply( const Input& in, ovf_file & f, ovf_segment & segment)
         {
-            segment.bnodes = std::stoi(in.string());
+            segment.n_cells[1] = std::stoi(in.string());
             f._state->found_bnodes = true;
         }
     };
@@ -255,7 +255,7 @@ namespace keywords
         template< typename Input >
         static void apply( const Input& in, ovf_file & f, ovf_segment & segment)
         {
-            segment.cnodes = std::stoi(in.string());
+            segment.n_cells[2] = std::stoi(in.string());
             f._state->found_cnodes = true;
         }
     };
