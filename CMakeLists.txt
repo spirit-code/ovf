@@ -187,6 +187,7 @@ if ( OVF_BUILD_TEST )
     ### Tests
     add_cxx_test( test_cpp_simple simple.cpp )
     add_cxx_test( test_cpp_binary binary.cpp )
+    add_cxx_test( test_cpp_atomistic atomistic.cpp )
 endif()
 
 
