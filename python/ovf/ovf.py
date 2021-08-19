@@ -17,6 +17,10 @@ FILEFORMAT_BIN8 = 2
 FILEFORMAT_TEXT = 3
 FILEFORMAT_CSV  = 4
 
+EXTENSION_FORMAT_OVF = 0
+EXTENSION_FORMAT_AOVF = 1
+EXTENSION_FORMAT_AOVF_COMP = 2
+
 class ovf_segment(ctypes.Structure):
     ### Some properties
     _fields_ = [
@@ -118,7 +122,7 @@ class _ovf_file(ctypes.Structure):
         ("found",      ctypes.c_bool),
         ("is_ovf",     ctypes.c_bool),
         ("n_segments", ctypes.c_int),
-        ("atomistic",  ctypes.c_bool),
+        ("ovf_extension_format",  ctypes.c_int),
         ("_state",     ctypes.c_void_p)
     ]
 
