@@ -24,6 +24,7 @@ namespace keywords
         {
             segment.meshtype = strdup(in.string().c_str());
             f._state->found_meshtype_atomistic = true;
+            f._state->found_meshtype = true;
         }
     };
 
@@ -345,6 +346,7 @@ namespace keywords
         template< typename Input >
         static void apply( const Input& in, ovf_file & f, ovf_segment & segment)
         {
+            // fmt::print("basis line value: {}\n", in.string());
             f._state->_cur_basis_line++;
         }
     };
@@ -355,6 +357,8 @@ namespace keywords
         template< typename Input >
         static void apply( const Input& in, ovf_file & f, ovf_segment & segment)
         {
+            // fmt::print("basis value: {}\n", in.string());
+
             f._state->found_basis = true;
             if( segment.ncellpoints != f._state->_cur_basis_line ) // Need to make sure that the basis array is already allocated
             {
