@@ -60,9 +60,9 @@ namespace parse
             >
     {};
 
-    // " Segment count: "
+        // " Segment count: "
     struct segment_count_number
-        : pegtl::plus<pegtl::digit>
+        : pegtl::pad<pegtl::plus<pegtl::digit>, pegtl::blank>
     {};
 
     // " Segment count: "
@@ -172,11 +172,6 @@ namespace parse
             > >
         {};
 
-        // " OOMMF OVF "
-        struct version
-            : pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("OOMMF OVF"), pegtl::blank >, pegtl::range< '1', '2' >, pegtl::until<pegtl::eol> >
-        {};
-
         // " Segment count: "
         struct segment_count_number
             : pegtl::plus<pegtl::digit>
@@ -184,7 +179,7 @@ namespace parse
 
         // " Segment count: "
         struct segment_count
-            : pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("Segment count:"), pegtl::blank >, segment_count_number, pegtl::eol >
+            : pegtl::seq< prefix, pegtl::pad< TAO_PEGTL_ISTRING("Segment count:"), pegtl::blank >, pegtl::pad<segment_count_number, pegtl::blank>, pegtl::eol >
         {};
 
         // " Begin: "
@@ -603,13 +598,13 @@ namespace parse
         struct segment_data
             : pegtl::seq<
                 pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
-                begin, TAO_PEGTL_ISTRING("Segment"), pegtl::eol,
+                begin, pegtl::pad<TAO_PEGTL_ISTRING("Segment"), pegtl::blank>, pegtl::eol,
                 pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
                 header<keyword_value_line_t>,
                 pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
                 pegtl::sor< data_text, data_csv, data_binary_4, data_binary_8 >,
                 pegtl::star<pegtl::seq<empty_line, pegtl::eol>>,
-                pegtl::until<pegtl::seq<end, TAO_PEGTL_ISTRING("Segment")>>, pegtl::eol >
+                pegtl::until<pegtl::seq<end, pegtl::pad<TAO_PEGTL_ISTRING("Segment"), pegtl::blank>>>, pegtl::eol >
         {};
 
         ////////////////////////////////////
