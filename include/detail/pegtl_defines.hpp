@@ -7,6 +7,7 @@
 #include <string>
 #include <ios>
 #include <tao/pegtl.hpp>
+#include <iostream>
 
 struct parser_state
 {
@@ -132,6 +133,58 @@ namespace parse
             opt_plus_minus,
             decimal_number >
     {};
+
+    namespace Vector3
+    {
+        struct x_val : tao::pegtl::pad<decimal_number, pegtl::blank> {};
+        struct y_val : tao::pegtl::pad<decimal_number, pegtl::blank> {};
+        struct z_val : tao::pegtl::pad<decimal_number, pegtl::blank> {};
+        struct vec3 : tao::pegtl::seq<x_val, y_val, z_val> {};
+
+        template<typename Rule, typename vec3_t>
+        struct action
+            : pegtl::nothing< Rule >
+        { };
+
+        template<typename vec3_t>
+        struct action< x_val, vec3_t>
+        {
+            template< typename Input >
+            static void apply( const Input& in, vec3_t & data)
+            {
+                data[0] = std::stof(in.string());
+            }
+        };
+
+        template<typename vec3_t>
+        struct action< y_val, vec3_t >
+        {
+            template< typename Input >
+            static void apply( const Input& in, vec3_t & data )
+            {
+                data[1] = std::stof(in.string());
+            }
+        };
+
+        template<typename vec3_t>
+        struct action<z_val, vec3_t>
+        {
+            template< typename Input >
+            static void apply( const Input& in, vec3_t & data)
+            {
+                data[2] = std::stof(in.string());
+            }
+        };
+
+        template<typename input_t, typename vec3_t, template<class> class action_t>
+        inline void read_vec3(input_t & in, vec3_t & vec_data)
+        {
+            std::string in_str = std::string(in.string());
+            pegtl::memory_input<pegtl::tracking_mode::lazy, pegtl::eol::lf_crlf, std::string > in_mem( in_str, "" );
+            bool success = pegtl::parse<pegtl::seq<vec3, pegtl::star<pegtl::any>>, action_t>(in_mem, vec_data);
+        }
+
+    }
 
 }
 }

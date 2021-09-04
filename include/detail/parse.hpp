@@ -181,6 +181,8 @@ namespace parse
 
         file._state->_cur_basis_line = 0;
 
+        file._state->_basis.resize(0);
+
         bool success = false;
 
         if(file.ovf_extension_format == OVF_EXTENSION_FORMAT_OVF)

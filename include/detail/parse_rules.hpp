@@ -536,6 +536,10 @@ namespace parse
                         missing_keywords.push_back("bravaisb");
                     if( !file._state->found_bravaisc )
                         missing_keywords.push_back("bravaisc");
+
+                    if( segment.ncellpoints != file._state->_basis.size() )
+                        throw tao::pegtl::parse_error( fmt::format("ncellpoints ({}) and number of specified basis atoms ({}) does not match!", segment.ncellpoints, file._state->_basis.size() ), in);
+
                 } else {
                     if( file._state->found_anodes )
                         wrong_keywords.push_back("anodes");
