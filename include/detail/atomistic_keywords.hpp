@@ -37,8 +37,8 @@ namespace keywords
         static void apply( const Input& in, ovf_file & f, ovf_segment & segment)
         {
             segment.meshtype = strdup(in.string().c_str());
-            f._state->found_meshtype_atomistic = true;
             f._state->found_meshtype = true;
+            f._state->found_meshtype_lattice = true;
         }
     };
 

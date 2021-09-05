@@ -50,8 +50,15 @@ struct parser_state
     bool found_cnodes       = false;
     bool found_basis        = false;
 
-    // Needed to keep track of the current line when reading in the basis positions
-    bool found_meshtype_atomistic = false;
+    /*
+    We need and additional bool, because in the compatibiliby format, we can have:
+            # meshtype : rectangular
+            ##% meshtype : lattice
+    So if the meshtype is rectangula, but found_meshtype_lattice is true we know the lattice meshtype was requested in the CAOVF format
+    */
+    bool found_meshtype_lattice = false;
+
+    std::vector<std::array<float, 3>> _basis = std::vector<std::array<float, 3>>(0);
     int _cur_basis_line = 0;
 
     /*

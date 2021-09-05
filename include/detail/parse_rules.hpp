@@ -465,7 +465,7 @@ namespace parse
                 if( !file._state->found_meshtype )
                     missing_keywords.push_back("meshtype");
 
-                if( std::string(segment.meshtype) == "rectangular" || (file.ovf_extension_format == OVF_EXTENSION_FORMAT_AOVF_COMP && file._state->found_meshtype_atomistic) )
+                if( std::string(segment.meshtype) == "rectangular" || (file.ovf_extension_format == OVF_EXTENSION_FORMAT_AOVF_COMP && file._state->found_meshtype_lattice) )
                 {
                     segment.N = segment.n_cells[0] * segment.n_cells[1] * segment.n_cells[2];
                     if( !file._state->found_xbase )
@@ -517,7 +517,7 @@ namespace parse
                         wrong_keywords.push_back("pointcount");
                 }
 
-                if( std::string(segment.meshtype) == "lattice" || file._state->found_meshtype_atomistic )
+                if( std::string(segment.meshtype) == "lattice" || file._state->found_meshtype_lattice )
                 {
                     segment.N = segment.n_cells[0] * segment.n_cells[1] * segment.n_cells[2] * segment.ncellpoints;
                     if( !file._state->found_anodes )
